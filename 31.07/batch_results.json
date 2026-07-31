@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-07-31T17:53:38.953114",
+  "input_folder": null,
+  "model_path": "lingbot-map.pt",
+  "total_duration": 194.37786531448364,
+  "results": [
+    {
+      "scene_name": "koridor_992",
+      "image_folder": "/content/drive/MyDrive/output_folder_lingbot_map",
+      "success": false,
+      "error": "No module named 'frustum_cull_ext'",
+      "duration": 194.37666940689087,
+      "output_video": "/content/drive/MyDrive/output_folder_lingbot_map/koridor_992_pointcloud.mp4",
+      "output_npz": null,
+      "output_glb": null,
+      "sky_mask_dir": null,
+      "sky_mask_visualization_dir": null
+    }
+  ]
+}
