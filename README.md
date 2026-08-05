@@ -22,3 +22,5 @@ python anomali_test.py
 Daha fazla detay ve hedeflenen iş paketleri için lütfen `DOKUMANLAR\Ozgur_Kotbas_proje.md` dosyasını inceleyin.
 
 
+
+
