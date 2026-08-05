@@ -16,7 +16,7 @@
 - [x] MVTec-AD veri seti araştırıldı; Kaggle üzerinden (`ipythonx/mvtec-ad`) erişim yolu belirlendi
 - [x] `anomali_test.py` scripti yazıldı: anomalib Engine API kullanılarak PaDiM modeli ayarlandı
 - [x] `bottle` kategorisinde ilk eğitim çalıştırıldı (Hugging Face'den ResNet18 ağırlıkları otomatik indirildi)
-- [x] Sonuçlar alındı ve `RAPORLAR/rapor.md` dosyasına kaydedildi
+- [x] Sonuçlar alındı ve `docs/raporlar/rapor.md` dosyasına kaydedildi
 
 **Sonuçlar (PaDiM — bottle):**
 - Eğitim süresi: ~40.35 sn · Test süresi: ~15.41 sn
@@ -33,8 +33,8 @@
 
 **Bugün yapılanlar:**
 - [x] [awesome-industrial-anomaly-detection](https://github.com/M-3LAB/awesome-industrial-anomaly-detection) deposu tarandı
-- [x] 10 makale seçildi ve her biri için detaylı notlar çıkarıldı (`PROJE/h1/30.07/Notlar.md`)
-- [x] Ek olarak 9 makale daha özeti yazıldı (`PROJE/h1/30.07/Makaleler.md`)
+- [x] 10 makale seçildi ve her biri için detaylı notlar çıkarıldı (`docs/proje_tanimi/makaleler/Notlar.md`)
+- [x] Ek olarak 9 makale daha özeti yazıldı (`docs/proje_tanimi/makaleler/Makaleler.md`)
 
 **İncelenen makaleler (özet):**
 
@@ -53,7 +53,7 @@
 
 **Commit:** `makaleler özetlendi` (2026-07-31 10:45)
 
-**✅ İP4 bitti kriteri karşılandı:** Özet tablosu repoda.
+**✅ İP4 bitti kriteri karşılandı:** Özet tablosu repoda (`docs/proje_tanimi/literatur_ozeti.md`).
 
 ---
 
@@ -62,11 +62,11 @@
 **Aktif İş Paketi:** İP3 — İlk altın tur kaydı + LingBot-Map keşfi
 
 **Bugün yapılanlar:**
-- [x] **Altın tur video kaydı yapıldı:** Koridorda sabit rotalı video çekildi (`31.07/koridor_992.mp4`, ~10.8 MB)
+- [x] **Altın tur video kaydı yapıldı:** Koridorda sabit rotalı video çekildi (`data/raw_videos/koridor_992.mp4`, ~10.8 MB)
 - [x] Google Colab T4 GPU üzerinde [LingBot-Map](https://github.com/robbyant/lingbot-map) pretrained modeli çalıştırıldı
-- [x] Koridor videosundan 3D nokta bulutu çıkartıldı → `31.07/koridor_992_pointcloud.mp4`
-- [x] Çıktı kareleri Google Drive'a yüklendi (`31.07/Frames_linki.txt` — Drive linki)
-- [x] Nokta bulutu JSON çıktısı elde edildi (`31.07/batch_results.json`)
+- [x] Koridor videosundan 3D nokta bulutu çıkartıldı → `data/raw_videos/koridor_992_pointcloud.mp4`
+- [x] Çıktı kareleri Google Drive'a yüklendi (`data/raw_videos/Frames_linki.txt` — Drive linki)
+- [x] Nokta bulutu JSON çıktısı elde edildi (`data/raw_videos/batch_results.json`)
 
 **Commit:** `Altın Tur. JSON çıktısı ve frames linki` (2026-07-31 21:03)
 
@@ -83,12 +83,11 @@
 **Aktif İş Paketi:** İP3 tamamlama — Renderer kodu + video organizasyonu
 
 **Bugün yapılanlar:**
-- [x] Nokta bulutu render scripti geliştirildi (`31.07/Renderer_kodu.md`): ORB renderer, dünya koordinat dönüşümü, FFmpeg video çıktısı
-- [x] Dosyalar `31.07/` klasörü altında düzenlendi (rename commit'leri)
+- [x] Nokta bulutu render scripti geliştirildi (`scripts/renderer_notlari.md`): ORB renderer, dünya koordinat dönüşümü, FFmpeg video çıktısı
+- [x] Dosyalar düzenlendi (rename commit'leri)
 
 **Commit'ler:**
 - `Altın tur video kaydı - renderer kodu` (21:56)
-- `Rename Renderer_kodu.md to 31.07/Renderer_kodu.md` (21:57)
 
 ---
 
@@ -101,7 +100,7 @@
 - [x] **PaDiM** modeli de eğitildi; PatchCore ile karşılaştırıldı
 - [x] İki modelin F1 ve AUROC metrikleri karşılaştırmalı tabloya yazıldı
 - [x] Her anomali türü için çıktı görüntüleri elde edildi (4 panel: ham görüntü / GT mask / ısı haritası / tahmin maskesi)
-- [x] Detaylı rapor yazıldı (`01-02.08/ip5_model_ciktilari/rapor.md`)
+- [x] Detaylı rapor yazıldı (`outputs/model_results/ip5_mvtec_baseline.md`)
 
 **Sonuçlar (bottle kategorisi):**
 
@@ -125,34 +124,24 @@
 **Aktif İş Paketleri:** İP5 dosyaları düzenlendi, repoya eklendi
 
 **Bugün yapılanlar:**
-- [x] İP5 model çıktıları ve raporlar `01-02.08/ip5_model_ciktilari/` klasörüne taşındı
+- [x] İP5 model çıktıları ve raporlar `outputs/model_results/` klasörüne taşındı
 - [x] Model ağırlıkları (büyük dosya) `.gitignore`'a alındı; yalnızca çıktı görselleri ve raporlar commit edildi
-- [x] `ip5_mvtec_baseline.md` özet metrik dosyası eklendi
 - [x] Fazlalık klasörler temizlendi
-
-**Commit'ler (4 Ağustos, 15:31–19:17 arası):**
-- `İP5: MVTec baseline sonuçları ve rapor eklendi`
-- `ip5 rapor ve sonuç çıktısı`
-- `İP5: Fazlalık klasör silindi`
-- `İP5: Ağırlıklar hariç, sadece PatchCore ve PaDiM çıktı resimleri eklendi`
-- `İP5 Tamamlandı: MVTec Baseline çıktıları ana dizine taşındı`
-- `Görseller temizlendi: Sadece raporlar ve kodlar bırakıldı`
 
 ---
 
 ### 📅 5–6 Ağustos 2026 (Çarşamba–Perşembe)
 
-**Aktif İş Paketi:** İP2 — Senaryo listesi + İP6 hazırlığı
+**Aktif İş Paketleri:** İP2, İP3 (tamamlama), İP4 (tamamlama) + Proje Refactoring
 
 **Bugün yapılanlar:**
-- [ ] İP2: Senaryo listesi yazılacak → `PROJE/senaryo_listesi.md`
-- [ ] İP6 için kendi veri klasörü hazırlanacak
-- [ ] daily_log.md oluşturuldu (bu dosya)
+- [x] **Klasör Yapısı:** Bütün repo modüler yapıya (`docs/`, `data/`, `scripts/`, `outputs/`) geçirildi.
+- [x] **İP2 (Senaryo Listesi):** Öncelik sırasına göre 5 senaryo (bırakılan nesne, kapatılmış çıkış, sızıntı vb.) yazıldı. (`docs/proje_tanimi/senaryo_listesi.md`)
+- [x] **İP3 (Waypoint Kareleri):** `data/waypoints/waypoint_listesi.yaml` oluşturuldu. `scripts/referans_kareler_cikart.py` ile videodan 5., 15. ve 25. saniyelerdeki altın tur referans kareleri otomatik çıkartılıp `data/waypoints/` altına kaydedildi.
+- [x] **İP4 (Literatür Özeti):** 10 temel makale ve proje için çıkarımlar özetlenip tabloya döküldü. (`docs/proje_tanimi/literatur_ozeti.md`)
+- [x] `daily_log.md` oluşturuldu ve güncellendi.
 
-**Notlar:**
-- H1 fiilen tamamlandı: İP1 ✅ · İP3 ✅ · İP4 ✅ · İP5 ✅
-- İP2 (senaryo listesi) yazıya dökülmedi ama kapsam zihinsel olarak netleşti — bugün commit edilecek
-- Sıradaki adım: İP6 — waypoint karelerini anomali modeline öğretmek
+**✅ İP2, İP3, İP4 bitti kriterleri tamamen karşılandı.** H1 iş paketleri resmi olarak tamamlandı.
 
 ---
 
@@ -166,4 +155,4 @@
 
 ---
 
-> **Genel durum (6 Ağu itibarıyla):** İP1 + İP3 + İP4 + İP5 tamamlandı. İP2 bugün yazılacak. İP6'ya geçmeye hazır.
+> **Genel durum (6 Ağu itibarıyla):** İP1, İP2, İP3, İP4, İP5 **tamamlandı.** H1 tamamen bitti. Proje klasör yapısı endüstri standardı haline getirildi. Sıradaki büyük adım İP6 (Kendi verisiyle anomali heatmap çalışması).
