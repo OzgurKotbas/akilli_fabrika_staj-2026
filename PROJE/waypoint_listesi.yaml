@@ -1,0 +1,30 @@
+# Altın Tur Waypoint Listesi
+# Tarih: 31 Temmuz 2026
+# Referans video: 31.07/koridor_992.mp4
+# Kamera: Pan-tilt (sabit açı, tripod)
+
+waypoints:
+  - id: WP01
+    konum: "Koridor başlangıcı — sol duvar"
+    saniye: 5      # videodaki zaman damgası
+    aciklama: "Acil çıkış kapısına bakış"
+    referans_kare: "PROJE/referans_kareler/WP01.jpg"
+
+  - id: WP02
+    konum: "Koridor ortası"
+    saniye: 15
+    aciklama: "Zemin geniş alan"
+    referans_kare: "PROJE/referans_kareler/WP02.jpg"
+
+  - id: WP03
+    konum: "Koridor sonu — makine yanı"
+    saniye: 25
+    aciklama: "Boru/makine bölgesi"
+    referans_kare: "PROJE/referans_kareler/WP03.jpg"
+
+meta:
+  toplam_sure_sn: 30
+  fps: 30
+  cozunurluk: "992p"
+  kayit_tarihi: "2026-07-31"
+  not: "Referans video LingBot-Map ile 3D nokta bulutu da üretildi (31.07/koridor_992_pointcloud.mp4)"
