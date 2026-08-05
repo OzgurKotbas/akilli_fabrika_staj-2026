@@ -2,25 +2,25 @@
 
 Bu proje, devriye sırasında normal durumdan sapmaları (yerde bırakılmış nesne, kapatılmış acil çıkış, sızıntı vb.) tespit etmeyi ve tur sonunda otomatik olarak kanıtlı raporlar (Markdown/PDF) üretmeyi amaçlamaktadır. Özgür Kotbaş'ın staj projesinin bir parçasıdır.
 
-## Klasör Yapısı ve İçerik (Mevcut Çalışma Dizini)
+## 📂 Klasör Yapısı ve İçerik
 
-* **`AI.md`**: Projenin geliştirilmesi sırasında alınan notları veya sistem kayıtlarını barındıran doküman.
-* **`anomali_test.py`**: `anomalib` kütüphanesini (PaDiM modeli) kullanarak MVTec-AD veri seti üzerinde anomali tespiti yapan, model eğitimini ve test görüntüleri üzerinden anomali ısı haritası (heatmap) çıktısı almayı sağlayan örnek Python kodu.
-* **`RAPORLAR/`**: Sistem tarafından oluşturulan çıktıların ve devriye raporlarının saklandığı dizin. (Örn: `rapor.md`)
-* **`results/`**: Çalıştırılan anomali tespiti modellerinin (şu an için `Padim`) ağırlık, değerlendirme ve çıktı sonuçlarının kaydedildiği dizin.
+Proje daha modüler ve anlaşılır olması adına aşağıdaki yapıya göre organize edilmiştir:
 
-## Başlangıç ve Kullanım
+* **`docs/`** 📚: Proje tanımı, literatür özetleri, akademik makaleler ve eski raporların bulunduğu dokümantasyon dizini.
+* **`data/`** 🗃️: Model eğitiminde ve testinde kullanılan ham videolar (`raw_videos/`) ile çıkartılan referans karelerin (`waypoints/`) tutulduğu veri seti dizini.
+* **`scripts/`** 💻: `anomalib` kullanılarak yazılmış model inferans/test kodları, referans kare çıkartma betikleri ve yapay zeka ile diyalogları barındıran `AI.md` dosyası.
+* **`outputs/`** 📈: Eğitilen modellerin ürettiği sonuçlar, ısı haritaları (heatmaps) ve performans değerlendirme raporları (F1, AUROC).
+* **`DOKUMANLAR/`**: Eski iş paketleri ve proje takip notlarının bulunduğu arşiv dizini.
+* **`daily_log.md`**: Proje boyunca günlük ilerlemelerin kaydedildiği izleme dosyası.
 
-Projede anomali tespiti işlemleri için [Anomalib](https://github.com/open-edge-platform/anomalib) kütüphanesinden faydalanılmaktadır.
+## 🚀 Başlangıç ve Kullanım
 
-Anomali tespiti temel örneğini çalıştırmak için:
+Projede anomali tespiti işlemleri için [Anomalib](https://github.com/open-edge-platform/anomalib) kütüphanesinden faydalanılmaktadır. MVTec-AD üzerinde temel testi (PaDiM/PatchCore) başlatmak için:
+
 ```bash
-python anomali_test.py
+# Scripts klasöründeki kodu çalıştırarak testi başlatın
+python scripts/anomali_test.py
 ```
 *(Not: İlk çalıştırmada MVTec-AD veri seti otomatik olarak indirilecektir.)*
 
-Daha fazla detay ve hedeflenen iş paketleri için lütfen `DOKUMANLAR\Ozgur_Kotbas_proje.md` dosyasını inceleyin.
-
-
-
-
+Daha fazla detay ve anomali senaryoları için lütfen `docs/proje_tanimi/senaryo_listesi.md` dosyasını inceleyin.
