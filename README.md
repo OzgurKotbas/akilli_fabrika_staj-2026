@@ -20,3 +20,5 @@ python anomali_test.py
 *(Not: İlk çalıştırmada MVTec-AD veri seti otomatik olarak indirilecektir.)*
 
 Daha fazla detay ve hedeflenen iş paketleri için lütfen `DOKUMANLAR\Ozgur_Kotbas_proje.md` dosyasını inceleyin.
+
+
