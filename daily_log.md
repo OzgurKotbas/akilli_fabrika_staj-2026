@@ -155,4 +155,32 @@
 
 ---
 
-> **Genel durum (6 Ağu itibarıyla):** İP1, İP2, İP3, İP4, İP5 **tamamlandı.** H1 tamamen bitti. Proje klasör yapısı endüstri standardı haline getirildi. Sıradaki büyük adım İP6 (Kendi verisiyle anomali heatmap çalışması).
+### 📅 8 Ağustos 2026 (Cumartesi)
+
+**Aktif İş Paketi:** İP6 — Kendi verisiyle anomali (Heatmap üretimi)
+
+**Bugün yapılanlar:**
+- [x] Az sayıda olan waypoint verisini artırmak için veri artırma (augmentation) betiği yazıldı (`scripts/ip6_veri_artirma.py`). Resimlerin aydınlık/kontrast ayarları ve yatay simetrileri alınarak normal klasörüne kopyalandı.
+- [x] Kontrollü test ortamı için sentetik bir anomali oluşturuldu (`test_verisi_olusturma.py`). WP01 karesi üzerine siyah bir dikdörtgen çizilip `abnormal` klasörüne eklendi.
+- [x] Anomalib'in `Folder` veri seti yapısı kullanılarak kendi görüntülerimiz üzerinden `PatchCore` eğitimi başlatıldı.
+- [x] Windows üzerindeki çoklu işlem (multiprocessing `spawn`) çökme hataları `if __name__ == '__main__':` bloğu eklenerek giderildi.
+- [x] Model başarıyla çalıştı ve heatmap sonuçları `outputs/ip6_heatmap.png` konumuna kaydedildi.
+
+Kendi verimizle değişiklik heatmap örneği alındı.
+
+---
+
+**Aktif İş Paketi:** İP7 — Waypoint Kıyası v0 (Referans vs Güncel Kare Fark Analizi)
+
+**Bugün yapılanlar:**
+- [x] Referans kare (WP01.jpg) ile devriye sırasında alınan güncel/değiştirilmiş kareyi (WP01_degisik.jpg) hizalamak için `scripts/ip7_waypoint_kiyasi.py` dosyası oluşturuldu.
+- [x] Başlangıçta AKAZE algoritması kullanılması denendi ancak mevcut OpenCV sürümündeki modül eksikliği (AKAZE_create bulunamaması) sebebiyle daha hızlı ve projeye daha uygun olan **ORB (Oriented FAST and Rotated BRIEF)** algoritmasına geçiş yapıldı.
+- [x] İki görüntü ORB üzerinden feature matching (özellik eşleştirme) ile başarılı bir şekilde eşleştirildi ve Homografi hesaplanarak WarpPerspective ile test görüntüsü, referans görüntünün açısına hizalandı.
+- [x] Hizalanmış görüntüler arasında mutlak piksel farkı (absolute difference) alınıp, morfolojik işlemlerle gürültüler temizlendi ve net bir "Değişiklik Maskesi" elde edildi.
+- [x] Sonuç `outputs/ip7_degisiklik_maskesi.png` olarak kaydedildi.
+
+**✅ İP7 bitti kriteri karşılandı:** Kontrollü senaryoda değişiklik maskesi başarılı bir şekilde çıktı.
+
+---
+
+> **Genel durum (8 Ağustos itibarıyla):** İP1, İP2, İP3, İP4, İP5, İP6 ve İP7 tamamlandı. Sıradaki adım İP8 (Değişiklik enjekteli tur — Etiketli test çifti seti).

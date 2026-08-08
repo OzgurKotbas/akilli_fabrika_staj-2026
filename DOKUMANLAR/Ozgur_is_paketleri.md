@@ -64,8 +64,8 @@ Proje 16 iş paketine bölünmüştür (İP15 = LingBot-Map stretch). Her iş pa
 | İP3 | ⬜ | | |
 | İP4 | ⬜ | | |
 | İP5 | ⬜ | | |
-| İP6 | ⬜ | | |
-| İP7 | ⬜ | | |
+| İP6 | ✅ | 08.08.2026 | Heatmap outputs/ip6_heatmap.png olarak alındı |
+| İP7 | ✅ | 08.08.2026 | ORB ile hizalama yapıldı, maske outputs/ip7_degisiklik_maskesi.png olarak alındı |
 | İP8 | ⬜ | | |
 | İP9 | ⬜ | | |
 | İP10 | ⬜ | | |

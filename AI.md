@@ -187,53 +187,90 @@ Pixel F1'i iyileştirmek için:
 3. Daha yüksek çözünürlüklü girdi dene (`image_size=(512,512)`)
 
 Proje için pixel F1=0.72 yeterli — alarm sistemi için anomali var/yok kararı (image AUROC) çok daha önemli.
+---
+
+## İP6 — Kendi Verisiyle Anomali (8 Ağustos 2026)
+
+**User:**
+ip 6 yı nasıl yapacağımı adım adım anlat
+
+**AI:**
+İP 6 için şu adımları izledik:
+1. **Veri Hazırlama (Data Augmentation):** 3-5 referans karesi yeterli gelmeyeceği için Torchvision ile (ColorJitter ve RandomHorizontalFlip) bu kareler çoğaltıldı.
+2. **Test Verisi (Abnormal) Oluşturma:** Mevcut referans karesinin üzerine siyah bir kutu (nesne) çizdirilerek sentetik bir anomali oluşturuldu.
+3. **Modelin Eğitilmesi:** Anomalib kütüphanesinin `Folder` veri seti yapısıyla oluşturduğumuz `normal` ve `abnormal` klasörleri kullanılarak `PatchCore` model eğitimi başlatıldı.
+4. **Heatmap:** Çıktı olarak oluşturulan heatmap, sonuçların başarılı olduğunu kanıtlamak üzere kaydedildi.
 
 ---
 
-## İP6 — Kendi Verisiyle Anomali (Planlanan — H3)
-
 **User:**
-Kendi waypoint görüntülerimle PatchCore eğitmek istiyorum ama çok az görüntüm var (3-5 kare). Bu yeterli mi?
+Python veri artırma (augmentation) kodlarını hangi klasörde çalıştırmalıyım?
 
 **AI:**
-PatchCore'un güçlü yanı tam da bu: **az normal örnekle da çalışıyor**. Memory bank tabanlı yaklaşımı nedeniyle 5-10 normal görüntü bile makul sonuç verir.
+Bu tür kodları ve komutları çalıştırırken terminalde her zaman **projenin ana dizininde (root directory)** olmalısın. Yani klasör yolun `D:\STAJ\akilli_fabrika_staj-2026` olmalı. Kod içindeki göreceli (relative) dosya yolları (örneğin: `data/waypoints/...`) ana dizine göre tasarlanmıştır.
 
-Ancak daha güvenilir sonuç için şunu öneriyorum:
-1. **Veri augmentation**: Aynı kareyi farklı parlaklık/kontrast değerleriyle çoğalt:
+---
+
+**User:**
+`TypeError: Folder.__init__() got an unexpected keyword argument 'image_size'` hatası alıyorum. Nasıl çözebilirim?
+
+**AI:**
+Bu durum bilgisayarında kurulu olan `anomalib` kütüphanesinin sürüm farklılıklarından kaynaklanıyor. Kütüphanenin bazı versiyonlarında `Folder` veri seti sınıfı `image_size` parametresini doğrudan kabul etmez. Çözüm olarak scriptteki `image_size=(256, 256)` satırını kaldırdık. 
+
+---
+
+**User:**
+`TypeError: Folder.__init__() missing 1 required positional argument: 'name'` hatası alıyorum.
+
+**AI:**
+Yine sürüm kaynaklı olarak, kullandığın versiyondaki `Folder` modülü zorunlu bir isimlendirme bekliyor. Koda `name="waypoint_dataset"` argümanını ekleyerek bu hatayı giderdik.
+
+---
+
+**User:**
+`RuntimeError: An attempt has been made to start a new process before the current process has finished its bootstrapping phase.` hatasını nasıl düzeltirim?
+
+**AI:**
+Bu çok bilindik bir **Windows çoklu işlem (multiprocessing)** hatasıdır. PyTorch dataloader'lar veriyi yüklemek için arka planda farklı işlemler (spawn) başlatır. Windows'ta bu işlemler dosyanı baştan aşağı tekrar çalıştırdığı için sonsuz döngü ve çökmeler meydana gelir.
+Bunu engellemek için kodun çalıştırılan ana kısmını şu koruma bloğunun içine almalısın:
+
 ```python
-from torchvision import transforms
-aug = transforms.Compose([
-    transforms.ColorJitter(brightness=0.3, contrast=0.2),
-    transforms.RandomHorizontalFlip(p=0.3),
-])
+if __name__ == '__main__':
+    engine = Engine(max_epochs=1)
+    engine.fit(...)
 ```
-2. Her waypoint için 10-15 farklı versiyon oluştur → toplam 30-45 görüntü
-3. `Folder` datamodule kullan, `MVTec` değil
-
-5 görüntüyle de çalışır ama alarm hassasiyeti düşük olacak. Augmentation ile bu sorunu büyük ölçüde aşarsın.
+Bu sayede model sorunsuz bir şekilde çalışır.
 
 ---
 
-## İP7 — Waypoint Kıyas Hattı (Planlanan — H3)
+## İP7 — Waypoint Kıyası v0 (8 Ağustos 2026)
 
 **User:**
-ORB feature matching ne zaman başarısız olur? Alternatifi nedir?
+ip 7yi nasıl yapacağım adım adım anlat
 
 **AI:**
-ORB şu durumlarda başarısız olur:
-
-1. **Aydınlatma değişimi** (gündüz vs. gece, pencere gölgesi): ORB aydınlatmaya hassas.
-2. **Büyük açı farkı**: Kamera açısı 15°'den fazla değiştiyse homografi hesabı bozulur.
-3. **Az doku** (düz duvar, tekdüze zemin): Feature point bulunamaz.
-
-**Alternatifler:**
-| Yöntem | Avantaj | Ne zaman kullan |
-|--------|---------|-----------------|
-| SIFT | Aydınlatmaya daha dayanıklı | Işık değişimi varsa |
-| AKAZE | Hız+dayanıklılık dengesi | Genel öneri |
-| ECC (Enhanced Correlation Coefficient) | Doku gerektirmez | Düz yüzeylerde |
-| Sabit kamera (tripod) | Hizalamaya hiç gerek yok | Kamera sabitlenebildiyse |
-
-Waypoint kıyasında **tripod kullanıyorsan** hizalamaya gerek bile kalmayabilir — direk piksel farkı alabilirsin.
+İP 7 için şu adımları izleyerek bir Python scripti (`ip7_waypoint_kiyasi.py`) oluşturduk:
+1. **Görüntüleri Okuma:** Referans (normal) kare ile devriyeden gelen güncel (test/abnormal) kareyi gri tonlamalı (grayscale) olarak yükledik.
+2. **Özellik Çıkarma (Feature Extraction):** Başlangıçta AKAZE algoritması kullanarak iki görüntüdeki anahtar noktaları (keypoints) bulduk.
+3. **Özellik Eşleştirme (Feature Matching):** İki görüntüdeki noktaları `BFMatcher` ile eşleştirip Lowe's Ratio testiyle güvenilir eşleşmeleri ayıkladık.
+4. **Hizalama (Warping):** Homografi matrisi hesaplayarak test karesini, referans karenin açısına "yapıştırdık" (hizaladık).
+5. **Fark Analizi:** İki görüntü arasındaki mutlak farkı (`absdiff`) alıp, eşikleme (threshold) ve morfolojik temizleme işlemleri uygulayarak net bir Değişiklik Maskesi elde ettik.
 
 ---
+
+**User:**
+Python kodunu çalıştırdığımda `AttributeError: module 'cv2' has no attribute 'AKAZE_create'` hatası aldım.
+
+**AI:**
+Bu hata kurulu olan OpenCV sürümünde (veya o sürüme ait contrib eklenti paketinde) `AKAZE` fonksiyonunun bulunmamasından kaynaklanıyor. Çözüm olarak kodda `cv2.AKAZE_create()` yerine OpenCV'nin her sürümünde varsayılan olarak gelen ve çok daha hızlı çalışan **ORB** algoritmasına (`cv2.ORB_create()`) geçiş yaptık.
+
+---
+
+**User:**
+Peki akaze mi yoksa orb mi daha iyi sonuç verirdi? Ayrıca hangisini kullanmak daha mantıklı?
+
+**AI:**
+Senin projende **ORB kullanmak kesinlikle daha mantıklı!** 
+- **AKAZE:** Çok büyük açı farklılıklarında ve aşırı ışık değişimlerinde daha kararlı ve doğru noktalar bulur. Ancak daha yavaştır ve daha çok işlem gücü tüketir.
+- **ORB:** SIFT/SURF'e açık kaynaklı, inanılmaz hızlı bir alternatiftir.
+- **Neden ORB?** Bu sistem bir otonom devriye robotunun (edge cihaz) üzerinde çalışacak. Robotun zaten belirli noktalara (waypoints) aynı açıyla bakmaya çalışması nedeniyle iki görüntü arasında büyük açı farkları olmayacaktır. Sadece ufak titreme veya park kaymaları olacaktır. ORB bu ufak kaymaları düzeltmek için fazlasıyla yeterlidir ve çok hızlı olduğu için edge tabanlı robotik sistemimiz için en optimal çözümdür.
