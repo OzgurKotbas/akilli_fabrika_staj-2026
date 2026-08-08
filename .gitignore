@@ -1,0 +1,41 @@
+# ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Ortam
+.env
+venv/
+.venv/
+env/
+
+# ========================
+# Anomalib / PyTorch
+# ========================
+# Deneme versiyonlarını dışla (v0-v9); "latest" korunuyor
+results/Patchcore/waypoint_dataset/v0/
+results/Patchcore/waypoint_dataset/v1/
+results/Patchcore/waypoint_dataset/v2/
+results/Patchcore/waypoint_dataset/v3/
+results/Patchcore/waypoint_dataset/v4/
+results/Patchcore/waypoint_dataset/v5/
+results/Patchcore/waypoint_dataset/v6/
+results/Patchcore/waypoint_dataset/v7/
+results/Patchcore/waypoint_dataset/v8/
+results/Patchcore/waypoint_dataset/v9/
+
+# ========================
+# IDE / OS
+# ========================
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
