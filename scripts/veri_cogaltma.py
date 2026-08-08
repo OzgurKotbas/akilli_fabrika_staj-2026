@@ -1,3 +1,4 @@
+# Bu kod akilli_fabrika_staj-2026 (root) kök dizininde çalıştırılmalı
 from torchvision import transforms
 from PIL import Image
 import os
