@@ -62,8 +62,8 @@ Proje 16 iş paketine bölünmüştür (İP15 = LingBot-Map stretch). Her iş pa
 | İP1 | ⬜ | | |
 | İP2 | ✅ | 10.08.2026 | 7 senaryo öncelik sıralı: S1-S3 test edildi, S4-S7 ileriki aşama. docs/senaryolar.md oluşturuldu. |
 | İP3 | ✅ | 10.08.2026 | altin_tur_v2.mp4 çekildi, PLY haritası Lingbot-Map (1034 frame limiti aşılarak) Kaggle'da üretildi, Drive'a yüklendi. |
-| İP4 | ⬜ | | |
-| İP5 | ⬜ | | |
+| İP4 | ✅ | 10.08.2026 | 10 makale özet tablosu: docs/literatur_ozet.md ve docs/proje_tanimi/literatur_ozeti.md |
+| İP5 | ✅ | 01-02.08.2026 | PatchCore AUROC=1.0, F1=0.992; PaDiM AUROC=0.997. Rapor+metrik: outputs/model_results/ip5_patchcore_padim/ |
 | İP6 | ✅ | 08.08.2026 | Heatmap outputs/ip6_heatmap.png olarak alındı |
 | İP7 | ✅ | 08.08.2026 | ORB ile hizalama yapıldı, maske outputs/ip7_degisiklik_maskesi.png olarak alındı |
 | İP8 | ✅ | 10.08.2026 | engel.mp4 çekildi, otomatik çift eşleştirici yazıldı, maskeler çıkarıldı. |
