@@ -1,0 +1,46 @@
+Şu An Zaten İyi Yaptıkların ✅
+Günlük log tutuyorsun
+Çıktıları repoya ekliyorsun
+Klasör yapısı düzenli
+Eksik Kalan En Kritik Şeyler
+1. Her iş paketinin ölçülebilir bitti kriteri yok Reşit'te her İP için net bir metrik var: "mAP50 > 0.95", "20 FPS yayın" gibi. Senin için şu an bunlar bulanık.
+
+2. Karar gerekçeleri yazılmıyor Neden PatchCore? Neden ORB? Neden threshold=30? Bu kararları yazan bir docs/kararlar.md dosyası olması gerekiyor. Reşit tam bunu yapıyor.
+
+3. Sayısal ölçüm yok İP6 heatmap çıktı — ama anomali skoru ne? Precision/Recall nedir? Eşik değeri doğru mu? Bu sayılar repoda olmalı.
+
+🧠 2. Yapay Zekaya Yaptırırken Kendine Ne Katabilirsin?
+Bu kısım daha önemli. Dürüst söyleyeyim: Kodu yazan olmak değil, kodu anlayan olmak değer katar.
+
+Önerdiğim Yol Haritası
+Adım 1 — Her scripti en az bir kere kendin çalıştır ve ne döndüğünü anla
+
+ip6_veri_artirma.py → Kaç görüntü üretti? Augmentation nasıl göründü?
+ip7_waypoint_kiyasi.py → Kaç keypoint buldu? Homografi matrisi ne döndü?
+model_ve_heapMap.py → Loss nasıl düştü? Heatmap hangi pikseller yüksek?
+Bunları print() ile gözlemle. AI'a "bunu açıkla" de.
+
+Adım 2 — Parametrelerle oyna, ne değiştiğini gör
+
+python
+# ip7'de threshold değerini değiştir:
+_, mask = cv2.threshold(diff, 30, 255, ...)  # 30 yerine 15 veya 50 dene
+Çıktı nasıl değişti? Bunu not al. Bu seni mühendis yapar.
+
+Adım 3 — AI'ya soru sor, cevabı kendin not düş AI bir şey yazınca ona şunu sor: "Bu satır tam olarak ne yapıyor, neden bu parametre?" Sonra o cevabı AI.md'ye kendi cümlelerinle yaz.
+
+Adım 4 — İP8'i sen planla, AI'ya sadece kodu yazdır
+
+"İP8'de ne yapacağımı sen planla" değil, "İP8'de şunu yapmak istiyorum: iki devriye turu arasında bırakılan nesneyi tespit etmek. Bunun için ne gerekir?"
+
+Planı sen kur, kodları AI'ya yazdır. Bu farkı herkes anlar.
+
+Adım 5 — Hataları kendin çözmeye çalış, sonra AI'dan yardım al Bugün aldığın cv2.AKAZE_create() hatasını önce 5 dakika kendisi araştırıydın. Sonra AI'ya sordun. Bu 5 dakika sana kalıcı bilgi katar.
+
+💡 Özet Tablo
+Yapay Zeka Yapsın	Sen Yap
+Boilerplate kod yazmak	Parametreleri anlamak ve ayarlamak
+Syntax hatalarını düzeltmek	Çıktıları yorumlamak
+Dokümantasyon şablonu oluşturmak	Kararların gerekçesini yazmak
+Test verisi oluşturmak	Hangi testin neden gerekli olduğuna karar vermek
+En kısa özet: Yapay zeka araçlarını bilen biri olmak zaten bir beceri. Ama "bu çıktı neden böyle, şunu değiştirirsem ne olur?" sorusunu sorabilmek seni farklı kılar. Projeden gerçek bir şey öğrenmek istiyorsan kodu değil, kararları sahiplen.

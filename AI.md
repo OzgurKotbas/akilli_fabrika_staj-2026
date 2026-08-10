@@ -274,3 +274,37 @@ Senin projende **ORB kullanmak kesinlikle daha mantıklı!**
 - **AKAZE:** Çok büyük açı farklılıklarında ve aşırı ışık değişimlerinde daha kararlı ve doğru noktalar bulur. Ancak daha yavaştır ve daha çok işlem gücü tüketir.
 - **ORB:** SIFT/SURF'e açık kaynaklı, inanılmaz hızlı bir alternatiftir.
 - **Neden ORB?** Bu sistem bir otonom devriye robotunun (edge cihaz) üzerinde çalışacak. Robotun zaten belirli noktalara (waypoints) aynı açıyla bakmaya çalışması nedeniyle iki görüntü arasında büyük açı farkları olmayacaktır. Sadece ufak titreme veya park kaymaları olacaktır. ORB bu ufak kaymaları düzeltmek için fazlasıyla yeterlidir ve çok hızlı olduğu için edge tabanlı robotik sistemimiz için en optimal çözümdür.
+
+---
+
+## İP3 (Yeniden) & İP15 — Kaggle LingBot-Map Hata Çözümleri (10 Ağustos 2026)
+
+**User:**
+Neden gpu seçemyorum? Ne yapmalıyım
+
+**AI:**
+Kaggle'da GPU (T4 x2) seçeneğinin soluk (seçilemez) olmasının sebebi hesapta telefon doğrulaması yapılmamış olmasıdır. Çözüm olarak `https://www.kaggle.com/settings` adresine gidip "Phone Verification" (Telefon Doğrulama) adımını tamamladık. Doğrulama sonrası haftalık 30 saat ücretsiz GPU kullanımı aktif oldu.
+
+---
+
+**User:**
+Process is interrupted. ip3_lingbotmap_notebook 2. hücre kodunda bu hatayı aldım
+
+**AI:**
+Hücre 2'deki LingBot-Map kurulum kodunda `pip install torch==2.1.0` komutu yer alıyordu. Kaggle ortamında halihazırda güncel bir PyTorch sürümü yüklü geldiği için üstüne farklı bir sürüm kurmaya çalışmak çakışmaya (kernel interrupt) neden oluyordu. Çözüm olarak PyTorch kurulum satırları kaldırıldı ve Kaggle'ın kendi PyTorch sürümü kullanıldı.
+
+---
+
+**User:**
+Error processing frames: CUDA out of memory. Tried to allocate 100.00 MiB. GPU 0 has a total capacity of 14.56 GiB... (1034 frame limiti sorunu)
+
+**AI:**
+LingBot-Map modeli varsayılan olarak "Streaming" (kesintisiz akış) modunda çalıştığı için 557 karelik videonun tüm özelliklerini VRAM'de tutmaya çalışıyordu ve 90. karede (yaklaşık 96 anahtar karede) 15 GB'lık GPU hafızasını dolduruyordu. Çözüm olarak `batch_demo.py` betiğine `--mode windowed` (Pencereli Mod) ve `--window_size 32` argümanları eklendi. Bu sayede işlem 32 anahtar karelik parçalara bölündü ve hafıza sorunu (OOM) tamamen aşıldı.
+
+---
+
+**User:**
+Altın tur v2 yi drivema indirir msin? (Kaggle Output panelinden dosyayı indiremiyorum)
+
+**AI:**
+Kaggle Output panelindeki büyük dosyaları (özellikle .ply) bazen tarayıcı üzerinden doğrudan indirmek hata verebiliyor. Alternatif olarak `pydrive2` kurarak dosyayı doğrudan Google Drive'a göndermeyi denedik. Ancak `client_secrets.json` gibi yetkilendirme sorunları çıkınca, Google OAuth Playground üzerinden alınan geçici "Access Token" ile `requests` kütüphanesini kullanarak dosyayı doğrudan Drive API üzerinden sorunsuz bir şekilde buluta aktardık.

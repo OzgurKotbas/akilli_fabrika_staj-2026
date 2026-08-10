@@ -33,6 +33,15 @@ results/Patchcore/waypoint_dataset/v8/
 results/Patchcore/waypoint_dataset/v9/
 
 # ========================
+# Medya ve Buyuk Veri Klasorleri (IP3, IP8 vb.)
+# ========================
+frames/
+data/raw_videos/
+ip8_test/*.mp4
+ip8_test/data/test_ciftleri/
+ip8_test/outputs/
+
+# ========================
 # IDE / OS
 # ========================
 .vscode/

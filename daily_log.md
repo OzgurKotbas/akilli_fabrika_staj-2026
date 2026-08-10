@@ -183,4 +183,23 @@ Kendi verimizle değişiklik heatmap örneği alındı.
 
 ---
 
-> **Genel durum (8 Ağustos itibarıyla):** İP1, İP2, İP3, İP4, İP5, İP6 ve İP7 tamamlandı. Sıradaki adım İP8 (Değişiklik enjekteli tur — Etiketli test çifti seti).
+### 📅 10 Ağustos 2026 (Pazartesi)
+
+**Aktif İş Paketleri:** İP3 (Tekrar - Yeni Altın Tur) ve İP15 (LingBot-Map 3D Haritalama)
+
+**Bugün yapılanlar:**
+- [x] Yeni ve daha detaylı bir "altın tur" videosu çekildi (`altin_tur_v2.mp4`).
+- [x] Kaggle üzerinde LingBot-Map modeli kullanılarak 3D nokta bulutu (point cloud) üretildi.
+- [x] **Kaggle Çözülen Sorunlar:** 
+  - Telefon onayıyla GPU (T4 x2) aktifleştirildi.
+  - PyTorch sürüm çakışmaları (kernel interrupt) giderildi.
+  - VRAM dolması (CUDA Out of Memory) hatası `--mode windowed` ve `--window_size 32` argümanlarıyla aşılarak sistem streaming yerine parçalı işlemeye geçirildi.
+  - İndirme sorunlarına karşı, Google OAuth Playground + Access Token yöntemiyle 3D `.ply` haritası doğrudan Google Drive'a başarıyla yüklendi.
+- [x] Proje yapısı iyileştirildi: İP3 için hazırlanan gelişmiş scriptler (frame extraction, waypoint seçimi, PLY oluşturma ve görselleştirme) projenin ana dizinine (`scripts/`, `notebooks/`, `docs/`) entegre edildi. Eski ve basit yöntem rafa kaldırıldı.
+
+**✅ İP3 bitti kriteri tamamen karşılandı.**
+**🚀 İP15 (Stretch Hedef) için devasa bir adım atıldı!** 3D haritalama başarılı oldu.
+
+---
+
+> **Genel durum (10 Ağustos itibarıyla):** İP1, İP2, İP3, İP4, İP5, İP6 ve İP7 tamamlandı. İP15 (Stretch) büyük oranda çözüldü. Sıradaki adım İP8 (Değişiklik enjekteli tur — Etiketli test çifti seti).

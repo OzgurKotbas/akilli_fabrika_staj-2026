@@ -61,7 +61,7 @@ Proje 16 iş paketine bölünmüştür (İP15 = LingBot-Map stretch). Her iş pa
 |:---:|:---:|---|-----|
 | İP1 | ⬜ | | |
 | İP2 | ⬜ | | |
-| İP3 | ⬜ | | |
+| İP3 | ✅ | 10.08.2026 | altin_tur_v2.mp4 çekildi, PLY haritası Lingbot-Map (1034 frame limiti aşılarak) Kaggle'da üretildi, Drive'a yüklendi. |
 | İP4 | ⬜ | | |
 | İP5 | ⬜ | | |
 | İP6 | ✅ | 08.08.2026 | Heatmap outputs/ip6_heatmap.png olarak alındı |
