@@ -60,7 +60,7 @@ Proje 16 iş paketine bölünmüştür (İP15 = LingBot-Map stretch). Her iş pa
 | İş paketi | Durum | Tarih | Not |
 |:---:|:---:|---|-----|
 | İP1 | ⬜ | | |
-| İP2 | ⬜ | | |
+| İP2 | ✅ | 10.08.2026 | 7 senaryo öncelik sıralı: S1-S3 test edildi, S4-S7 ileriki aşama. docs/senaryolar.md oluşturuldu. |
 | İP3 | ✅ | 10.08.2026 | altin_tur_v2.mp4 çekildi, PLY haritası Lingbot-Map (1034 frame limiti aşılarak) Kaggle'da üretildi, Drive'a yüklendi. |
 | İP4 | ⬜ | | |
 | İP5 | ⬜ | | |
