@@ -264,15 +264,26 @@ Kendi verimizle değişiklik heatmap örneği alındı.
 
 ---
 
-### 📊 İP9 Çıktı Analizi ve Yorumu
+### 📊 İP9 Çıktı Analizi ve Yorumu (Hardcode Düzeltmesi Sonrası)
 
-İlk ensemble test sonuçları alındı ve hedeflenen "TP/FP sayımı" raporlandı:
-- **Metrikler:** TP=1, FP=2, FN=2 → Precision=0.333, Recall=0.333, F1=0.333
-- **MOG2 Gözlemi (Zamanlama Bug'ı):** Her 3 waypoint için `fg_ratio=0.0871` ve `2 nesne` bulundu. Bunun sebebi scriptte `ref_second=15.0` olarak sabit bırakılmış olmasıdır. MOG2 tüm waypointler için videonun 15. saniyesindeki (WP02 zamanı) çerçeveyi analiz ettiğinden, bulduğu nesneler WP01 ve WP03'ün gerçek kutularıyla (GT bbox) eşleşmedi ve FP/FN üretti.
-- **PatchCore Gözlemi (Global Embedding):** Skorlar 0.09, 0.07 ve 0.24 bandında kalarak 0.5 eşiğini geçemedi. Global özellik çıkaran ResNet18 modeli, koridorun genel yapısını tanıyıp "normal" kararı veriyor; yerdeki küçük cisimler global embedding vektörünü eşiği geçecek kadar değiştiremiyor.
-- **Sonuç:** Kod mimarisi (karar birleşimi ve IoU ölçümü) başarılı bir şekilde çalışıyor. İP9 bitti kriteri olan "TP/FP ölçüm tablosu" sağlandı. Optimizasyon aşamasında MOG2'nin zaman senkronizasyonu dinamik hale getirilecek ve PatchCore eşiği inceltilecek.
+Sistemi sabit değerli (hardcoded) zamanlamadan kurtarıp, zaman damgalarını dinamik olarak `waypoint_listesi.yaml` dosyasından çekecek şekilde düzelttik. Bu basit mimari değişikliği metriklerde hemen etkisini gösterdi:
+
+- **Eski Metrikler (Sabit 15. saniye):** F1 = 0.333 | Precision = 0.333
+- **Yeni Metrikler (Dinamik okuma):** F1 = 0.400 | Precision = 0.500
+
+**Metrikler Ne Anlama Geliyor ve Neden Bu Seviyede?**
+Üretim ortamındaki bir sistem için F1=0.400 elbette düşüktür ancak stajın bu aşamasında **algoritmaların fiziksel sınırlarını ve doğasını anladığımız için** son derece değerlidir. İyileşmenin ve hala süren sorunların anatomisi şöyledir:
+
+1. **Precision Neden %33'ten %50'ye Çıktı?** 
+   Sabit 15. saniye kullanırken WP01'de yanlış zamana bakıldığı için sistem "hayalet" anomali bulup Yanlış Alarm (FP) veriyordu. Saniyeyi dinamik olarak 5.0'a çekince WP01'deki bu sahte FP engellendi ve Precision anında %50'ye fırladı.
+2. **WP01 Neden Kaçtı (False Negative)?** 
+   WP01'deki su şişesi görüntüde çok küçük. Seçtiğimiz PatchCore modeli (ResNet18) tüm resmi tek bir "global" özellik vektörüne sıkıştırdığı için, koridorun devasa normal duvarları arasında yerdeki ufak şişe vektörü yeterince bükemiyor (skor=0.09). Bu modelleme tercihimizin bir bedelidir.
+3. **WP03 Neden Yanlış Alarm Üretiyor (False Positive)?** 
+   MOG2 harekete ve piksel değişimine aşırı duyarlı. WP03 (25. saniye) gibi kapıların, parlak zeminlerin olduğu alanlarda ışık değişimleri ve yansımalar MOG2 tarafından "nesne" (FP) zannediliyor.
+
+**Sonuç:** Yazılım mimarisindeki hatalar (hardcode) temizlendi ve sistem veriye duyarlı hale (data-driven) getirildi. Artık hatalarımız "bug" kaynaklı değil, tamamen algoritmik sınırlarla ilgili (küçük nesneler vs yansımalar).
 
 ---
 
-> **Genel durum (15 Ağustos itibarıyla):** İP1–İP9 tamamlandı. Ensemble mimarisi çalıştırıldı ve TP/FP metrikleri başarıyla ölçüldü. Artık bu uyarıların haberleşme protokolüyle iletileceği İP10 (MQTT) aşamasına geçilecek.
+> **Genel durum (15 Ağustos itibarıyla):** İP1–İP9 tamamlandı. Kodlar hardcode'dan temizlendi ve dinamik YAML okumaya geçirildi. Bu sayede Precision değeri yükseltildi. Artık bu uyarıların haberleşme protokolüyle iletileceği İP10 (MQTT) aşamasına geçilecek.
 

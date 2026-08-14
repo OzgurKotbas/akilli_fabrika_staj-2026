@@ -411,7 +411,8 @@ def process_waypoint_ensemble(pair: dict,
                                engel_video: str,
                                scorer: PatchCoreScorer,
                                use_patchcore: bool,
-                               out_dir: Path) -> dict:
+                               out_dir: Path,
+                               ref_second: float) -> dict:
     """
     Bir test çifti için MOG2 + PatchCore ensemble pipeline çalıştır.
     """
@@ -440,10 +441,8 @@ def process_waypoint_ensemble(pair: dict,
 
     # ── KATMAN 1: MOG2 ────────────────────────────────────────────────────────
     print("  [MOG2] Arka plan çıkarma başlıyor...")
-    # ref_second: waypoint'in yaklaşık zamanını bulmak için yaml gerekli,
-    # ancak test görüntüsünden de çalışabiliriz — tüm videoyu tara
     engel_last, fg_mask, fg_ratio, mog2_nesneler = mog2_detect(
-        str(engel_video), ref_second=15.0  # varsayılan orta nokta
+        str(engel_video), ref_second=ref_second
     )
     print(f"  [MOG2] fg_ratio={fg_ratio:.4f}  |  {len(mog2_nesneler)} nesne")
 
@@ -602,6 +601,12 @@ def run_ensemble(engel_video: str,
         print("[HATA] test_ciftleri boş.")
         return
 
+    waypoints_data = load_yaml_waypoints(WAYPOINTS_YAML)
+    wp_seconds = {}
+    for wp in waypoints_data:
+        if "id" in wp and "saniye" in wp:
+            wp_seconds[wp["id"]] = float(wp["saniye"])
+
     scorer = get_scorer()
 
     # PatchCore için tüm referans karelerini birlikte yükle
@@ -621,8 +626,11 @@ def run_ensemble(engel_video: str,
 
     all_results = []
     for pair in pairs:
+        wp_id = pair.get("waypoint_id", "")
+        ref_sec = wp_seconds.get(wp_id, 15.0)
+
         result = process_waypoint_ensemble(
-            pair, engel_video, scorer, use_patchcore, out_dir
+            pair, engel_video, scorer, use_patchcore, out_dir, ref_second=ref_sec
         )
         if result:
             all_results.append(result)

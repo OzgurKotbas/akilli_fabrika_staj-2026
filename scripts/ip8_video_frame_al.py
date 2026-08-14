@@ -59,15 +59,30 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    # ─── ÇIKARILACAK ANOMALİ LİSTESİ ──────────────────────────────────────────
-    # Burayı kendi videonuzdaki saniyelere ve dosya isimlerine göre düzenleyin.
-    # Format: (saniye, "dosya_adi.jpg")
-    anomali_listesi = [
-        (5.0,  "WP01_degisik.jpg"),  # 5. saniyede WP01 için anomali var (su şişesi vb.)
-        (15.0, "WP02_degisik.jpg"),  # 15. saniyede WP02 için anomali var
-        (23.0, "WP03_degisik.jpg"),  # 23. saniyede WP03 için anomali var
-        # (32.5, "ekstra_anomali.jpg"), # Virgüllü saniye (float) kullanabilirsiniz
-    ]
+    import yaml
+    
+    # ─── HARDCODE DÜZELTMESİ: YAML'DAN DİNAMİK OKUMA ──────────────────────────
+    yaml_path = "data/waypoints/waypoint_listesi.yaml"
+    anomali_listesi = []
+    
+    if os.path.exists(yaml_path):
+        try:
+            with open(yaml_path, encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+                waypoints = data.get("waypoints", [])
+                for wp in waypoints:
+                    if "id" in wp and "saniye" in wp:
+                        wp_id = wp["id"]
+                        sec = float(wp["saniye"])
+                        # engel videosundan çıkacak isimler *_degisik.jpg formatında
+                        anomali_listesi.append((sec, f"{wp_id}_degisik.jpg"))
+        except Exception as e:
+            print(f"[HATA] YAML okunamadı: {e}")
+    else:
+        print(f"[UYARI] {yaml_path} bulunamadı. Lütfen waypoint listesini kontrol edin.")
     # ──────────────────────────────────────────────────────────────────────────
 
-    extract_frames_from_video(args.video, args.outdir, anomali_listesi)
+    if not anomali_listesi:
+        print("[HATA] Çıkarılacak frame bulunamadı.")
+    else:
+        extract_frames_from_video(args.video, args.outdir, anomali_listesi)

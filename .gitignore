@@ -48,3 +48,8 @@ ip8_test/outputs/
 .idea/
 *.DS_Store
 Thumbs.db
+
+# ========================
+# Kisisel Geri Bildirim
+# ========================
+duzelt/
