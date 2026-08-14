@@ -308,3 +308,15 @@ Altın tur v2 yi drivema indirir msin? (Kaggle Output panelinden dosyayı indire
 
 **AI:**
 Kaggle Output panelindeki büyük dosyaları (özellikle .ply) bazen tarayıcı üzerinden doğrudan indirmek hata verebiliyor. Alternatif olarak `pydrive2` kurarak dosyayı doğrudan Google Drive'a göndermeyi denedik. Ancak `client_secrets.json` gibi yetkilendirme sorunları çıkınca, Google OAuth Playground üzerinden alınan geçici "Access Token" ile `requests` kütüphanesini kullanarak dosyayı doğrudan Drive API üzerinden sorunsuz bir şekilde buluta aktardık.
+
+
+---
+
+**User:**
+İki farklı videodaki frameleri karşılaştırmaya çalışırken ORB ve SSIM sürekli patlıyor, referans ile engel videoları farklı açılardan çekilmiş. bbox'lar yanlış çıkıyor.
+
+**AI:**
+İki farklı açıdan (biri sağdan yakın, biri ortadan geniş açı) çekilmiş sahneleri doğrudan piksel piksel karşılaştırmak (SSIM) yapısal olarak hatalıdır. Çözüm olarak hibrid bir mimari (v3) geliştirdik:
+1. **Histogram Korelasyonu:** Engel videosundan en yakın kareyi otomatik bulmak.
+2. **MOG2 Arka Plan Çıkarma (Background Subtraction):** Engel videosunu *kendi içinde* tarayarak (farklı bir videoyla kıyaslamadan) sonradan eklenmiş, hareketsiz durağan yabancı nesneleri (su şişesi, çöp kovası) tespit ettik.
+Bu yaklaşım sayesinde farklı kamera açısı sorununu ekarte ederek anomaliyi (değişikliği) başarıyla algılayabildik.

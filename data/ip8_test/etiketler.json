@@ -1,0 +1,34 @@
+{
+  "tur": "ip8_degisiklik_turu",
+  "tarih": "2026-08-14",
+  "aciklama": "Değişiklik enjekteli tur — etiketli test çifti seti (GT ground truth)",
+  "test_ciftleri": [
+    {
+      "waypoint_id": "WP01",
+      "referans": "data/waypoints/referans_kareler/WP01.jpg",
+      "degisik":   "data/ip8_test/WP01_degisik.jpg",
+      "degisiklik_tipi": "yerde_birakilan_cisim",
+      "senaryo": "S1",
+      "gt_bbox": null,
+      "aciklama": "Su şişesi + çöp kovası zemine bırakıldı"
+    },
+    {
+      "waypoint_id": "WP02",
+      "referans": "data/waypoints/referans_kareler/WP02.jpg",
+      "degisik":   "data/ip8_test/WP02_degisik.jpg",
+      "degisiklik_tipi": "yol_engeli",
+      "senaryo": "S3",
+      "gt_bbox": null,
+      "aciklama": "Büyük engel koridora bırakıldı"
+    },
+    {
+      "waypoint_id": "WP03",
+      "referans": "data/waypoints/referans_kareler/WP03.jpg",
+      "degisik":   "data/ip8_test/WP03_degisik.jpg",
+      "degisiklik_tipi": "kapi_anomalisi",
+      "senaryo": "S2",
+      "gt_bbox": null,
+      "aciklama": "Kapı durumu değişti"
+    }
+  ]
+}

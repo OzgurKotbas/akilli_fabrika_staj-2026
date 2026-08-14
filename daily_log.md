@@ -203,3 +203,23 @@ Kendi verimizle değişiklik heatmap örneği alındı.
 ---
 
 > **Genel durum (10 Ağustos itibarıyla):** İP1, İP2, İP3, İP4, İP5, İP6 ve İP7 tamamlandı. İP15 (Stretch) büyük oranda çözüldü. Sıradaki adım İP8 (Değişiklik enjekteli tur — Etiketli test çifti seti).
+
+
+### 📅 14 Ağustos 2026 (Cuma)
+
+**Aktif İş Paketleri:** İP8 (Değişiklik Enjekteli Tur ve Anomali Tespiti)
+
+**Bugün yapılanlar:**
+- [x] İP8 için değişiklik algılama pipeline'ı baştan tasarlandı ve \ip8_video_eslestir_analiz.py\ scripti yazıldı.
+- [x] **Hibrit Anomali Tespiti Mimarisi (v3):** Farklı kamera açılarından kaynaklanan SSIM/ORB hizalama hatalarını aşmak için sisteme **MOG2 Arka Plan Çıkarma** eklendi.
+  - Histogram korelasyonu ile otomatik zaman eşleştirmesi yapıldı.
+  - Sadece engel videosunu analiz ederek durağan yeni nesneleri bulan MOG2 entegre edildi.
+  - Hizalama tolere edebildiği yerlerde SSIM desteği kullanıldı.
+- [x] 3 farklı waypoint için (WP01, WP02, WP03) test gerçekleştirildi ve hepsinde de değişiklikler başarıyla tespit edilerek (\>>> UYARI <<<\) hedeflere ulaşıldı.
+- [x] Gelecek adımlarda sistemin hata bulma doğruluğunun daha da artırılması (false-positive / devasa bbox temizliği) ve performans optimizasyonları yapılması planlandı.
+
+**🏆 İP8 bitti kriteri başarıyla karşılandı!**
+
+---
+
+> **Genel durum (14 Ağustos itibarıyla):** İP8 de tamamlandı. Temel altyapı oturdu ancak anomali algılama doğruluğu (farklı açılardan dolayı) ileride daha da geliştirilecek. Sıradaki adım İP9 (Karar birleşimi ve IP9 çıktıları).

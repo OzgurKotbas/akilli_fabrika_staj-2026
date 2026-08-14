@@ -1,0 +1,69 @@
+{
+  "waypoint_id": "WP03",
+  "konum": "Koridor sonu — makine yanı",
+  "altin_tur_second": 25.0,
+  "engel_second": 41.45,
+  "histogram_korelas": 0.6067,
+  "ssim_skoru": 0.5138,
+  "mog2_fg_ratio": 0.1003,
+  "referans_kare": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\waypoints\\referans_kareler\\WP03.jpg",
+  "engel_kare": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP03_degisik.jpg",
+  "analiz_gorseli": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP03_analiz.png",
+  "diff_maskesi": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP03_maske.png",
+  "fg_mog2": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP03_fg_mog2.png",
+  "is_alert": true,
+  "severity": "MEDIUM",
+  "change_score": 0.8335,
+  "ssim_nesne_sayisi": 0,
+  "mog2_nesne_sayisi": 5,
+  "ssim_nesneler": [],
+  "mog2_nesneler": [
+    {
+      "x": 212,
+      "y": 0,
+      "w": 138,
+      "h": 206,
+      "area": 28428,
+      "cx": 281,
+      "cy": 103
+    },
+    {
+      "x": 220,
+      "y": 215,
+      "w": 122,
+      "h": 198,
+      "area": 24156,
+      "cx": 281,
+      "cy": 314
+    },
+    {
+      "x": 155,
+      "y": 48,
+      "w": 61,
+      "h": 273,
+      "area": 16653,
+      "cx": 185,
+      "cy": 184
+    },
+    {
+      "x": 390,
+      "y": 18,
+      "w": 30,
+      "h": 219,
+      "area": 6570,
+      "cx": 405,
+      "cy": 127
+    },
+    {
+      "x": 351,
+      "y": 65,
+      "w": 35,
+      "h": 145,
+      "area": 5075,
+      "cx": 368,
+      "cy": 137
+    }
+  ],
+  "hizalama_basari": true,
+  "ts": "2026-08-14T03:15:12.578644"
+}
