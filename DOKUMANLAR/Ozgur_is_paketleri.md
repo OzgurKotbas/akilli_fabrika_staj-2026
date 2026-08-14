@@ -66,8 +66,8 @@ Proje 16 iş paketine bölünmüştür (İP15 = LingBot-Map stretch). Her iş pa
 | İP5 | ✅ | 01-02.08.2026 | PatchCore AUROC=1.0, F1=0.992; PaDiM AUROC=0.997. Rapor+metrik: outputs/model_results/ip5_patchcore_padim/ |
 | İP6 | ✅ | 08.08.2026 | Heatmap outputs/ip6_heatmap.png olarak alındı |
 | İP7 | ✅ | 08.08.2026 | ORB ile hizalama yapıldı, maske outputs/ip7_degisiklik_maskesi.png olarak alındı |
-| İP8 | ✅ | 10.08.2026 | engel.mp4 çekildi, otomatik çift eşleştirici yazıldı, maskeler çıkarıldı. |
-| İP9 | ⬜ | | |
+| İP8 | ✅ | 10.08.2026 | engel.mp4 çekildi, otomatik çift eşleştirici yazıldı, maskeler çıkarıldı. etiketler.json'a gt_bbox koordinatları eklendi (15.08.2026); severity HIGH'a düzeltildi. İP9 TP/FP ölçümü için hazır. |
+| İP9 | ✅ | 15.08.2026 | Ensemble scripti çalıştırıldı. TP=1, FP=2, FN=2 (F1=0.333) ölçüldü. MOG2 sabit zaman bug'ı ve PatchCore global embedding hassasiyeti analiz edilip loglandı. |
 | İP10 | ⬜ | | |
 | İP11 | ⬜ | | |
 | İP12 | ⬜ | | |

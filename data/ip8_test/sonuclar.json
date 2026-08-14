@@ -1,48 +1,36 @@
 {
   "tur": "ip8_degisiklik_turu_v3",
   "tarih": "2026-08-14T03:15:12.579647",
-  "altin_video": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\raw_videos\\altin_tur_v2.mp4",
-  "engel_video": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\raw_videos\\engel.mp4",
+  "guncelleme_notu": "severity ve gt_bbox alanları 2026-08-15 tarihinde etiketler.json referansıyla düzeltildi",
+  "altin_video": "data/raw_videos/altin_tur_v2.mp4",
+  "engel_video": "data/raw_videos/engel.mp4",
   "toplam": 3,
   "uyari_sayisi": 3,
   "sonuclar": [
     {
       "waypoint_id": "WP01",
       "konum": "Koridor başlangıcı — sol duvar",
+      "degisiklik_tipi": "yerde_birakilan_cisim",
+      "senaryo": "S1",
       "altin_tur_second": 5.0,
       "engel_second": 13.76,
       "histogram_korelas": 0.9412,
       "ssim_skoru": 0.4732,
       "mog2_fg_ratio": 0.0115,
-      "referans_kare": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\waypoints\\referans_kareler\\WP01.jpg",
-      "engel_kare": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP01_degisik.jpg",
-      "analiz_gorseli": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP01_analiz.png",
-      "diff_maskesi": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP01_maske.png",
-      "fg_mog2": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP01_fg_mog2.png",
+      "referans_kare": "data/waypoints/referans_kareler/WP01.jpg",
+      "engel_kare": "data/ip8_test/WP01_degisik.jpg",
+      "analiz_gorseli": "data/ip8_test/WP01_analiz.png",
+      "diff_maskesi": "data/ip8_test/WP01_maske.png",
+      "fg_mog2": "data/ip8_test/WP01_fg_mog2.png",
       "is_alert": true,
-      "severity": "MEDIUM",
+      "severity": "HIGH",
       "change_score": 0.4535,
       "ssim_nesne_sayisi": 2,
       "mog2_nesne_sayisi": 0,
+      "gt_bbox": {"x": 190, "y": 196, "w": 204, "h": 301},
       "ssim_nesneler": [
-        {
-          "x": 261,
-          "y": 196,
-          "w": 133,
-          "h": 171,
-          "area": 22743,
-          "cx": 327,
-          "cy": 281
-        },
-        {
-          "x": 190,
-          "y": 369,
-          "w": 107,
-          "h": 128,
-          "area": 13696,
-          "cx": 243,
-          "cy": 433
-        }
+        {"x": 261, "y": 196, "w": 133, "h": 171, "area": 22743, "cx": 327, "cy": 281},
+        {"x": 190, "y": 369, "w": 107, "h": 128, "area": 13696, "cx": 243, "cy": 433}
       ],
       "mog2_nesneler": [],
       "hizalama_basari": true,
@@ -51,69 +39,32 @@
     {
       "waypoint_id": "WP02",
       "konum": "Koridor ortası",
+      "degisiklik_tipi": "yol_engeli",
+      "senaryo": "S3",
       "altin_tur_second": 15.0,
       "engel_second": 32.3,
       "histogram_korelas": 0.7925,
       "ssim_skoru": 0.5249,
       "mog2_fg_ratio": 0.0911,
-      "referans_kare": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\waypoints\\referans_kareler\\WP02.jpg",
-      "engel_kare": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP02_degisik.jpg",
-      "analiz_gorseli": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP02_analiz.png",
-      "diff_maskesi": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP02_maske.png",
-      "fg_mog2": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP02_fg_mog2.png",
+      "referans_kare": "data/waypoints/referans_kareler/WP02.jpg",
+      "engel_kare": "data/ip8_test/WP02_degisik.jpg",
+      "analiz_gorseli": "data/ip8_test/WP02_analiz.png",
+      "diff_maskesi": "data/ip8_test/WP02_maske.png",
+      "fg_mog2": "data/ip8_test/WP02_fg_mog2.png",
       "is_alert": true,
-      "severity": "MEDIUM",
+      "severity": "HIGH",
       "change_score": 0.3877,
       "ssim_nesne_sayisi": 3,
       "mog2_nesne_sayisi": 2,
+      "gt_bbox": {"x": 137, "y": 536, "w": 240, "h": 308},
       "ssim_nesneler": [
-        {
-          "x": 25,
-          "y": 444,
-          "w": 81,
-          "h": 103,
-          "area": 8343,
-          "cx": 65,
-          "cy": 495
-        },
-        {
-          "x": 124,
-          "y": 449,
-          "w": 46,
-          "h": 104,
-          "area": 4784,
-          "cx": 147,
-          "cy": 501
-        },
-        {
-          "x": 423,
-          "y": 784,
-          "w": 57,
-          "h": 80,
-          "area": 4560,
-          "cx": 451,
-          "cy": 824
-        }
+        {"x": 25,  "y": 444, "w": 81, "h": 103, "area": 8343,  "cx": 65,  "cy": 495},
+        {"x": 124, "y": 449, "w": 46, "h": 104, "area": 4784,  "cx": 147, "cy": 501},
+        {"x": 423, "y": 784, "w": 57, "h": 80,  "area": 4560,  "cx": 451, "cy": 824}
       ],
       "mog2_nesneler": [
-        {
-          "x": 137,
-          "y": 556,
-          "w": 240,
-          "h": 308,
-          "area": 73920,
-          "cx": 257,
-          "cy": 710
-        },
-        {
-          "x": 204,
-          "y": 536,
-          "w": 130,
-          "h": 87,
-          "area": 11310,
-          "cx": 269,
-          "cy": 579
-        }
+        {"x": 137, "y": 556, "w": 240, "h": 308, "area": 73920, "cx": 257, "cy": 710},
+        {"x": 204, "y": 536, "w": 130, "h": 87,  "area": 11310, "cx": 269, "cy": 579}
       ],
       "hizalama_basari": true,
       "ts": "2026-08-14T03:15:06.490457"
@@ -121,71 +72,34 @@
     {
       "waypoint_id": "WP03",
       "konum": "Koridor sonu — makine yanı",
+      "degisiklik_tipi": "kapi_anomalisi",
+      "senaryo": "S2",
       "altin_tur_second": 25.0,
       "engel_second": 41.45,
       "histogram_korelas": 0.6067,
       "ssim_skoru": 0.5138,
       "mog2_fg_ratio": 0.1003,
-      "referans_kare": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\waypoints\\referans_kareler\\WP03.jpg",
-      "engel_kare": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP03_degisik.jpg",
-      "analiz_gorseli": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP03_analiz.png",
-      "diff_maskesi": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP03_maske.png",
-      "fg_mog2": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP03_fg_mog2.png",
+      "referans_kare": "data/waypoints/referans_kareler/WP03.jpg",
+      "engel_kare": "data/ip8_test/WP03_degisik.jpg",
+      "analiz_gorseli": "data/ip8_test/WP03_analiz.png",
+      "diff_maskesi": "data/ip8_test/WP03_maske.png",
+      "fg_mog2": "data/ip8_test/WP03_fg_mog2.png",
       "is_alert": true,
-      "severity": "MEDIUM",
+      "severity": "HIGH",
       "change_score": 0.8335,
       "ssim_nesne_sayisi": 0,
       "mog2_nesne_sayisi": 5,
+      "gt_bbox": {"x": 155, "y": 0, "w": 265, "h": 413},
       "ssim_nesneler": [],
       "mog2_nesneler": [
-        {
-          "x": 212,
-          "y": 0,
-          "w": 138,
-          "h": 206,
-          "area": 28428,
-          "cx": 281,
-          "cy": 103
-        },
-        {
-          "x": 220,
-          "y": 215,
-          "w": 122,
-          "h": 198,
-          "area": 24156,
-          "cx": 281,
-          "cy": 314
-        },
-        {
-          "x": 155,
-          "y": 48,
-          "w": 61,
-          "h": 273,
-          "area": 16653,
-          "cx": 185,
-          "cy": 184
-        },
-        {
-          "x": 390,
-          "y": 18,
-          "w": 30,
-          "h": 219,
-          "area": 6570,
-          "cx": 405,
-          "cy": 127
-        },
-        {
-          "x": 351,
-          "y": 65,
-          "w": 35,
-          "h": 145,
-          "area": 5075,
-          "cx": 368,
-          "cy": 137
-        }
+        {"x": 212, "y": 0,   "w": 138, "h": 206, "area": 28428, "cx": 281, "cy": 103},
+        {"x": 220, "y": 215, "w": 122, "h": 198, "area": 24156, "cx": 281, "cy": 314},
+        {"x": 155, "y": 48,  "w": 61,  "h": 273, "area": 16653, "cx": 185, "cy": 184},
+        {"x": 390, "y": 18,  "w": 30,  "h": 219, "area": 6570,  "cx": 405, "cy": 127},
+        {"x": 351, "y": 65,  "w": 35,  "h": 145, "area": 5075,  "cx": 368, "cy": 137}
       ],
       "hizalama_basari": true,
-      "ts": "2026-08-14T03:15:12.578644"
+      "ts": "2026-08-14T03:15:12.578647"
     }
   ]
 }

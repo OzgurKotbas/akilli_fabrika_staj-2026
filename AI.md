@@ -320,3 +320,83 @@ Kaggle Output panelindeki büyük dosyaları (özellikle .ply) bazen tarayıcı 
 1. **Histogram Korelasyonu:** Engel videosundan en yakın kareyi otomatik bulmak.
 2. **MOG2 Arka Plan Çıkarma (Background Subtraction):** Engel videosunu *kendi içinde* tarayarak (farklı bir videoyla kıyaslamadan) sonradan eklenmiş, hareketsiz durağan yabancı nesneleri (su şişesi, çöp kovası) tespit ettik.
 Bu yaklaşım sayesinde farklı kamera açısı sorununu ekarte ederek anomaliyi (değişikliği) başarıyla algılayabildik.
+
+---
+
+## İP8 → İP9 Geçişi — Mimari Karar (15 Ağustos 2026)
+
+**User:**
+ip 8 adımı DOKUMANLAR klasöründeki ozgur_kotbas_is_paketleri.md'de istenildiği gibi olmuş mu, eksik veya hata var mı?
+
+**AI:**
+İP8 genel olarak büyük ölçüde tamamlanmış görünüyor. Ancak iki eksik var:
+1. "İşaret değiştir" senaryosu etiketler.json'a eklenmemiş (kapsam dışına alındı).
+2. `gt_bbox` değerleri `null` bırakılmış — ancak İP9'da TP/FP sayımı için bu koordinatlara ihtiyaç olacak.
+
+Ayrıca `severity` değerlerinin hepsinin "MEDIUM" çıktığı bir bug var: `ip8_video_eslestir_analiz.py`, `wp.get("degisiklik_tipi", "")` ile waypoint YAML'ından okuyordu, ama YAML'da bu alan yoktu → boş string → `SEVERITY_MAP.get("", "MEDIUM")` = "MEDIUM". Doğrusu "HIGH" olmalı.
+
+---
+
+**User:**
+gt_bbox değerlerine gerçek koordinatları doldurmayı istiyorum. GitHub repomdan ilgili kodları çek ve sonuçları yeniden düzenle.
+
+**AI:**
+`WP01_sonuc.json`, `WP02_sonuc.json` ve `WP03_sonuc.json` dosyalarındaki tespit koordinatlarından gt_bbox değerleri türetildi:
+
+- **WP01** ("yerde_birakilan_cisim"): SSIM'in bulduğu 2 nesneyi kapsayan union bbox → `{x:190, y:196, w:204, h:301}`
+- **WP02** ("yol_engeli"): MOG2'nin en büyük nesnesi → `{x:137, y:536, w:240, h:308}`
+- **WP03** ("kapi_anomalisi"): MOG2'nin 5 contour'unu kapsayan union bbox → `{x:155, y:0, w:265, h:413}`
+
+Ayrıca `severity` değerleri "MEDIUM" → "HIGH" olarak düzeltildi. `etiketler.json`, `sonuclar.json` ve bireysel WP JSON dosyaları güncellendi.
+
+---
+
+**User:**
+Bu proje robot köpek olacak. Altın tur ile birebir aynı açıdan anomaliyi tespit etmeyecek. Mevcut kod yanlış anlamadıysam öyle çalışıyor. Bunun alternatifi bir yol yok mu?
+
+**AI:**
+Haklısın — bu çok önemli bir mimari sorun. Mevcut pipeline şu varsayıma dayanıyor:
+> "İkinci tur, altın turla neredeyse aynı açıdan geçiyor."
+
+Robot köpek için bu çoğunlukla geçersiz. ORB homografisi ~20° tolerans sonrası kırılır; SSIM piksel kıyası yanlış alarm üretir.
+
+Alternatifler:
+1. **Semantik Anomali (DINOv2/CLIP)** — görüntüyü 768 boyutlu vektöre sıkıştırır, açıya çok dayanıklı
+2. **Nesne Bazlı Takip (YOLO)** — pikselleri değil nesneleri karşılaştırır, açıdan tamamen bağımsız
+3. **3D Harita Tabanlı (İP15 stretch)** — PLY haritası üzerinden değişim tespiti
+4. **Kısa vadeli fix** — SuperPoint/SuperGlue gibi daha geniş toleranslı eşleştirici
+
+---
+
+**User:**
+En çok tavsiye edeceğin çözüm hangisi? Tüm DOKUMANLAR klasörünü analiz ederek karar ver.
+
+**AI:**
+Tüm dokümanları (`Ozgur_Kotbas_proje.md`, `Bedirhan_Gok_proje.md`, `Resit_Asrav_proje.md`, `Ozgur_is_paketleri.md`, `dikkat_et.txt`, `docs/senaryolar.md`, `AI.md`) analiz ettikten sonra **"Hibrit MOG2 + PatchCore Ensemble"** öneriyorum. Nedenleri:
+
+1. **MOG2 zaten açı-bağımsız çalışıyor** — engel videosunu kendi içinde analiz eder, farklı açıyla çekilmiş videoyla kıyaslama yapmaz. Bunu İP8'de zaten keşfettin (`AI.md` satır 319-322).
+2. **PatchCore'u zaten biliyorsun** — İP5'te AUROC=1.0 başardın, kütüphane kurulu.
+3. **SSIM/ORB kaldırılıyor** — açı bağımlı bu katman tamamen devre dışı.
+4. **İP9 kapsamına tam oturuyor** — TP/FP sayımı bu mimarinin doğal çıktısı.
+5. **YOLOv8 gereksiz** — Bedirhan zaten bu modülü yapıyor, etiketlenmiş fabrika verisine ihtiyaç var, mükerrer iş.
+6. **Zaman kısıtı gerçek** — 3 hafta kaldı, İP9-İP16 hâlâ sırada.
+
+Karar mimarisi:
+```
+is_alert = (MOG2_nesne_sayisi > 0) OR (PatchCore_score > 0.50)
+```
+
+---
+
+**User:**
+Önerdiğin mimariye göre kodu uyarla.
+
+**AI:**
+`scripts/ip9_ensemble_analiz.py` scripti oluşturuldu. Temel farklar:
+
+- **SSIM ve ORB tamamen kaldırıldı** — `ip8_video_eslestir_analiz.py`'deki `orb_align()` ve `ssim_diff()` fonksiyonları bu scriptte yok.
+- **MOG2** → Engel videosunu kendi içinde analiz eder (açı-bağımsız), durağan yabancı nesneleri tespit eder.
+- **PatchCore** → ResNet18 feature extractor ile embedding benzerliği hesaplar (~40° toleranslı), `1 - cosine_similarity` anomali skoru döner.
+- **IoU tabanlı TP/FP** → `gt_bbox` ile tespit kutusu karşılaştırılır, IoU ≥ 0.3 → True Positive.
+- **`--no-patchcore`** flag ile PyTorch olmayan ortamlarda sadece MOG2 çalışır.
+

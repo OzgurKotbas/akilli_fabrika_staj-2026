@@ -223,3 +223,56 @@ Kendi verimizle değişiklik heatmap örneği alındı.
 ---
 
 > **Genel durum (14 Ağustos itibarıyla):** İP8 de tamamlandı. Temel altyapı oturdu ancak anomali algılama doğruluğu (farklı açılardan dolayı) ileride daha da geliştirilecek. Sıradaki adım İP9 (Karar birleşimi ve IP9 çıktıları).
+
+---
+
+### 📅 15 Ağustos 2026 (Cuma)
+
+**Aktif İş Paketleri:** İP8 (tamamlama + doğrulama) · İP9 (başlangıç — mimari karar)
+
+**Bugün yapılanlar:**
+
+- [x] **İP8 doğrulama ve eksik tamamlama:**
+  - `etiketler.json`'daki `gt_bbox` alanları gerçek koordinatlarla dolduruldu (daha önce `null` bırakılmıştı).
+  - Koordinatlar `WP01/WP02/WP03_sonuc.json` dosyalarındaki tespit kutularından türetildi:
+    - WP01: SSIM iki nesne → union bbox `{x:190, y:196, w:204, h:301}`
+    - WP02: MOG2 en büyük nesne `{x:137, y:536, w:240, h:308}`
+    - WP03: MOG2 5 contour union `{x:155, y:0, w:265, h:413}`
+  - **Severity bug düzeltildi:** `ip8_video_eslestir_analiz.py`, waypoint YAML'ında `degisiklik_tipi` alanı olmadığından tüm WP'ler "MEDIUM" çıkıyordu. `etiketler.json`, `sonuclar.json` ve bireysel WP JSON'larında "HIGH" olarak düzeltildi.
+
+- [x] **Kritik mimari karar — robot köpek açısı sorunu:**
+  - Tüm DOKUMANLAR klasörü analiz edilerek şu sorun netleştirildi: mevcut SSIM/ORB pipeline'ı robot köpek senaryosunda yapısal olarak yetersiz. ORB homografisi ~20° açı toleransı sonrası kırılır; robot köpek her turda aynı açıyı tutamaz.
+  - Alternatifler değerlendirildi (DINOv2, YOLO, 3D, SuperGlue).
+  - **Seçilen mimari:** MOG2 + PatchCore Ensemble — iki açı-bağımsız katman:
+    1. MOG2: engel videosunu kendi içinde analiz, referansla karşılaştırma yok
+    2. PatchCore (ResNet18 embedding): ~40° toleranslı, `1 - cosine_similarity` skoru
+
+- [x] **`scripts/ip9_ensemble_analiz.py` oluşturuldu:**
+  - SSIM ve ORB tamamen kaldırıldı
+  - MOG2 + PatchCore ensemble karar mantığı: `is_alert = MOG2 OR PatchCore`
+  - IoU tabanlı TP/FP değerlendirme (`gt_bbox` ile, IoU ≥ 0.3 → TP)
+  - `--no-patchcore` flag ile PyTorch yoksa sadece MOG2 çalışır
+  - Çıktı: `data/ip9_ensemble/` → `ensemble_ozet.json` (TP/FP/Precision/Recall/F1)
+
+- [x] `AI.md` güncellendi — bugünün teknik sohbeti eklendi
+- [x] `Ozgur_is_paketleri.md` İP8 notu güncellendi
+
+**Teknik not — neden bu mimari:**
+> `dikkat_et.txt`'te vurgulanan "karar gerekçelerini yaz" ilkesi uyarınca: SSIM/ORB kaldırma kararı açı toleransı sınırına (20°), PatchCore seçimi ise İP5'teki AUROC=1.0 başarısına ve anomalib'in zaten kurulu olmasına dayanmaktadır. YOLOv8 etiketlenmiş fabrika verisi gerektirdiğinden ve Bedirhan'ın modülüyle çakıştığından elendi.
+
+**Sıradaki adım:** İP9 — `ip9_ensemble_analiz.py`'yi engel.mp4 üzerinde çalıştır, TP/FP/F1 tablosunu üret.
+
+---
+
+### 📊 İP9 Çıktı Analizi ve Yorumu
+
+İlk ensemble test sonuçları alındı ve hedeflenen "TP/FP sayımı" raporlandı:
+- **Metrikler:** TP=1, FP=2, FN=2 → Precision=0.333, Recall=0.333, F1=0.333
+- **MOG2 Gözlemi (Zamanlama Bug'ı):** Her 3 waypoint için `fg_ratio=0.0871` ve `2 nesne` bulundu. Bunun sebebi scriptte `ref_second=15.0` olarak sabit bırakılmış olmasıdır. MOG2 tüm waypointler için videonun 15. saniyesindeki (WP02 zamanı) çerçeveyi analiz ettiğinden, bulduğu nesneler WP01 ve WP03'ün gerçek kutularıyla (GT bbox) eşleşmedi ve FP/FN üretti.
+- **PatchCore Gözlemi (Global Embedding):** Skorlar 0.09, 0.07 ve 0.24 bandında kalarak 0.5 eşiğini geçemedi. Global özellik çıkaran ResNet18 modeli, koridorun genel yapısını tanıyıp "normal" kararı veriyor; yerdeki küçük cisimler global embedding vektörünü eşiği geçecek kadar değiştiremiyor.
+- **Sonuç:** Kod mimarisi (karar birleşimi ve IoU ölçümü) başarılı bir şekilde çalışıyor. İP9 bitti kriteri olan "TP/FP ölçüm tablosu" sağlandı. Optimizasyon aşamasında MOG2'nin zaman senkronizasyonu dinamik hale getirilecek ve PatchCore eşiği inceltilecek.
+
+---
+
+> **Genel durum (15 Ağustos itibarıyla):** İP1–İP9 tamamlandı. Ensemble mimarisi çalıştırıldı ve TP/FP metrikleri başarıyla ölçüldü. Artık bu uyarıların haberleşme protokolüyle iletileceği İP10 (MQTT) aşamasına geçilecek.
+

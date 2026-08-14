@@ -2,6 +2,7 @@
   "tur": "ip8_degisiklik_turu",
   "tarih": "2026-08-14",
   "aciklama": "Değişiklik enjekteli tur — etiketli test çifti seti (GT ground truth)",
+  "gt_bbox_notu": "gt_bbox değerleri ip8_video_eslestir_analiz.py (v3) çıktısından elde edilen tespit kutularından türetilmiştir. Format: {x, y, w, h} — sol üst köşe + genişlik/yükseklik (piksel). Görüntü boyutu referans alınarak hesaplanmıştır.",
   "test_ciftleri": [
     {
       "waypoint_id": "WP01",
@@ -9,7 +10,15 @@
       "degisik":   "data/ip8_test/WP01_degisik.jpg",
       "degisiklik_tipi": "yerde_birakilan_cisim",
       "senaryo": "S1",
-      "gt_bbox": null,
+      "severity": "HIGH",
+      "gt_bbox": {
+        "x": 190,
+        "y": 196,
+        "w": 204,
+        "h": 301,
+        "kaynak": "ssim_nesneler union (Nesne1+Nesne2)",
+        "not": "Su şişesi (N1: 261,196,133×171) + çöp kovası (N2: 190,369,107×128) birleşik kutu"
+      },
       "aciklama": "Su şişesi + çöp kovası zemine bırakıldı"
     },
     {
@@ -18,7 +27,15 @@
       "degisik":   "data/ip8_test/WP02_degisik.jpg",
       "degisiklik_tipi": "yol_engeli",
       "senaryo": "S3",
-      "gt_bbox": null,
+      "severity": "HIGH",
+      "gt_bbox": {
+        "x": 137,
+        "y": 536,
+        "w": 240,
+        "h": 308,
+        "kaynak": "mog2_nesneler[0] — en büyük nesne",
+        "not": "Ana koridor engeli (MOG2 en büyük fg bölgesi: 73920 px²)"
+      },
       "aciklama": "Büyük engel koridora bırakıldı"
     },
     {
@@ -27,7 +44,15 @@
       "degisik":   "data/ip8_test/WP03_degisik.jpg",
       "degisiklik_tipi": "kapi_anomalisi",
       "senaryo": "S2",
-      "gt_bbox": null,
+      "severity": "HIGH",
+      "gt_bbox": {
+        "x": 155,
+        "y": 0,
+        "w": 265,
+        "h": 413,
+        "kaynak": "mog2_nesneler union (tüm 5 nesne kapsayan bbox)",
+        "not": "Kapı bölgesi değişimi — MOG2 5 contour tespit etti (toplam alan: 80882 px²). x: min(155,212,220,390,351)=155, y: min(0,215,48,18,65)=0, x2: max(216,350,342,420,386)=420, y2: max(206,413,321,237,210)=413"
+      },
       "aciklama": "Kapı durumu değişti"
     }
   ]

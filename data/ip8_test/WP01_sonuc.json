@@ -1,40 +1,34 @@
 {
   "waypoint_id": "WP01",
   "konum": "Koridor başlangıcı — sol duvar",
+  "degisiklik_tipi": "yerde_birakilan_cisim",
+  "senaryo": "S1",
   "altin_tur_second": 5.0,
   "engel_second": 13.76,
   "histogram_korelas": 0.9412,
   "ssim_skoru": 0.4732,
   "mog2_fg_ratio": 0.0115,
-  "referans_kare": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\waypoints\\referans_kareler\\WP01.jpg",
-  "engel_kare": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP01_degisik.jpg",
-  "analiz_gorseli": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP01_analiz.png",
-  "diff_maskesi": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP01_maske.png",
-  "fg_mog2": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP01_fg_mog2.png",
+  "referans_kare": "data/waypoints/referans_kareler/WP01.jpg",
+  "engel_kare": "data/ip8_test/WP01_degisik.jpg",
+  "analiz_gorseli": "data/ip8_test/WP01_analiz.png",
+  "diff_maskesi": "data/ip8_test/WP01_maske.png",
+  "fg_mog2": "data/ip8_test/WP01_fg_mog2.png",
   "is_alert": true,
-  "severity": "MEDIUM",
+  "severity": "HIGH",
   "change_score": 0.4535,
   "ssim_nesne_sayisi": 2,
   "mog2_nesne_sayisi": 0,
+  "gt_bbox": {
+    "x": 190,
+    "y": 196,
+    "w": 204,
+    "h": 301,
+    "kaynak": "ssim_nesneler union (Nesne1+Nesne2)",
+    "not": "Su şişesi (N1: 261,196,133×171) + çöp kovası (N2: 190,369,107×128) birleşik kutu"
+  },
   "ssim_nesneler": [
-    {
-      "x": 261,
-      "y": 196,
-      "w": 133,
-      "h": 171,
-      "area": 22743,
-      "cx": 327,
-      "cy": 281
-    },
-    {
-      "x": 190,
-      "y": 369,
-      "w": 107,
-      "h": 128,
-      "area": 13696,
-      "cx": 243,
-      "cy": 433
-    }
+    {"x": 261, "y": 196, "w": 133, "h": 171, "area": 22743, "cx": 327, "cy": 281},
+    {"x": 190, "y": 369, "w": 107, "h": 128, "area": 13696, "cx": 243, "cy": 433}
   ],
   "mog2_nesneler": [],
   "hizalama_basari": true,
