@@ -1,0 +1,114 @@
+# Devriye Tur Raporu
+**Oluşturan:** Özgür Kotbaş · Anomali + Devriye Raporu Modülü  
+**Tarih:** {{ tarih }}  
+**Saat:** {{ saat }}  
+**Tur No:** {{ tur_no }}  
+**Proje:** Görsel Anomali Tespiti + Otomatik Devriye Raporu · Grup 03_Gama · BTÜ · 2026
+
+---
+
+## Özet
+
+| Metrik | Değer |
+|--------|-------|
+| Toplam Waypoint | {{ toplam_wp }} |
+| Anomali Tespit Edilen | {{ uyari_sayisi }} |
+| Normal | {{ normal_sayisi }} |
+| Uyarı Oranı | {{ "%.1f"|format(uyari_oran * 100) }}% |
+| PatchCore Aktif | {{ "Evet" if patchcore_aktif else "Hayır (sadece MOG2)" }} |
+| Ensemble Mimarisi | MOG2 + PatchCore |
+
+{% if uyari_sayisi > 0 %}
+> ⚠️ **{{ uyari_sayisi }} waypoint'te anomali tespit edildi.** Aşağıdaki tespitler öncelik sırasıyla listelenmiştir.
+{% else %}
+> ✅ **Tüm waypoint'ler normal.** Anomali tespit edilmedi.
+{% endif %}
+
+---
+
+## Uyarılar (Öncelik Sırasıyla)
+
+{% if uyarilar %}
+{% for uyari in uyarilar %}
+### 🔴 {{ uyari.waypoint_id }} — {{ uyari.degisiklik_tipi | replace("_", " ") | title }}
+
+| Alan | Değer |
+|------|-------|
+| **Severity** | {{ uyari.severity }} |
+| **Senaryo** | {{ uyari.senaryo }} |
+| **MOG2 Nesne** | {{ uyari.mog2_nesne_sayisi }} adet |
+| **PatchCore Skoru** | {{ "%.4f"|format(uyari.patchcore_score) if uyari.patchcore_score >= 0 else "Devre Dışı" }} |
+| **FG Oranı** | {{ "%.4f"|format(uyari.mog2_fg_ratio) }} |
+| **Zaman** | {{ uyari.ts[:19] | replace("T", " ") }} |
+| **Karar** | {{ uyari.karar_aciklama }} |
+
+{% if uyari.gt_bbox %}
+**GT Bounding Box:** x={{ uyari.gt_bbox.x }}, y={{ uyari.gt_bbox.y }}, w={{ uyari.gt_bbox.w }}, h={{ uyari.gt_bbox.h }}
+{% endif %}
+
+{% if uyari.tp_fp and uyari.tp_fp.get("tp") is not none %}
+**TP/FP Değerlendirme:** TP={{ uyari.tp_fp.get("tp", "?") }}, FP={{ uyari.tp_fp.get("fp", "?") }}, IoU={{ uyari.tp_fp.get("iou_best", "?") }}  
+*{{ uyari.tp_fp.get("not", "") }}*
+{% endif %}
+
+**Referans → Test Görüntüsü:**
+- Referans: `{{ uyari.referans }}`
+- Test    : `{{ uyari.test }}`
+{% if uyari.ensemble_gorseli %}
+- Analiz  : `{{ uyari.ensemble_gorseli }}`
+{% endif %}
+
+---
+{% endfor %}
+{% else %}
+_Uyarı bulunamadı._
+{% endif %}
+
+## Normal Waypoint'ler
+
+{% if normaller %}
+| Waypoint | Tip | MOG2 Nesne | PatchCore Skoru |
+|----------|-----|-----------|----------------|
+{% for n in normaller %}
+| {{ n.waypoint_id }} | {{ n.degisiklik_tipi | replace("_", " ") }} | {{ n.mog2_nesne_sayisi }} | {{ "%.4f"|format(n.patchcore_score) if n.patchcore_score >= 0 else "-" }} |
+{% endfor %}
+{% else %}
+_Normal waypoint yok._
+{% endif %}
+
+---
+
+## Performans Metrikleri
+
+| Metrik | Değer |
+|--------|-------|
+| **TP** | {{ metrikler.TP }} |
+| **FP** | {{ metrikler.FP }} |
+| **FN** | {{ metrikler.FN }} |
+| **Precision** | {{ "%.3f"|format(metrikler.precision) }} |
+| **Recall** | {{ "%.3f"|format(metrikler.recall) }} |
+| **F1** | {{ "%.3f"|format(metrikler.F1) }} |
+
+---
+
+## Teknik Bilgi
+
+**Ensemble Mimarisi:**
+```
+KATMAN 1 → MOG2 Arka Plan Çıkarma  (açı-bağımsız)
+KATMAN 2 → PatchCore Anomali Skoru  (~40° toleranslı)
+
+KARAR: is_alert = (MOG2_nesne > 0) OR (PatchCore_score > {{ patchcore_esik }})
+```
+
+**Severity Eşlemesi:**
+- `yerde_birakilan_cisim` → HIGH
+- `yol_engeli` → HIGH  
+- `kapi_anomalisi` → HIGH
+- `levha_degisikligi` → MEDIUM
+- `kablo_karmasa` → LOW
+
+---
+
+*Bu rapor `ip11_rapor_uret.py` tarafından otomatik üretilmiştir.*  
+*Kaynak veri: `{{ kaynak_json }}`*

@@ -32,24 +32,29 @@ from datetime import datetime
 from pathlib import Path
 from skimage.metrics import structural_similarity as ssim
 
+import sys
+sys.path.append(str(Path(__file__).resolve().parent))
+import config_okuyucu
+
 # ─── Proje Ayarları ───────────────────────────────────────────────────────────
-PROJECT_DIR  = Path("D:/STAJ/akilli_fabrika_staj-2026")
+PROJECT_DIR  = config_okuyucu.PROJECT_ROOT
+CONFIG       = config_okuyucu.CONFIG
+
 OUT_DIR      = PROJECT_DIR / "data" / "ip8_test"
 RESULTS_PATH = OUT_DIR / "sonuclar.json"
 
 # ─── Algılama Parametreleri ────────────────────────────────────────────────────
-DIFF_THRESHOLD  = 40        # SSIM esik degeri (dusuruldu: gercek nesneleri yakalamak icin)
-MIN_AREA        = 1000      # piksel² — cok kucuk gurultuyu yoksay ama kucuk nesneleri de gozden kacirma
-MORPH_KERNEL    = 9         # morfolojik islem cekirdegi — hafif temizlik (kucuk nesneleri ezme)
-BLUR_KERNEL     = 7         # Gaussian blur — agresif degil, konum hassasiyetini koru
-CLAHE_CLIP      = 2.0       # CLAHE kontrast normalize katsayısı
+_vis_conf = CONFIG.get("vision", {})
 
-# Sarı zemin çizgisi HSV aralığı
-# (hue: 20-35, sat: 80+, val: 80+ — fabrika sarı güvenlik şeridi için tipik değerler)
-# --tune modunda canlı ayar yapılabilir
-YELLOW_HSV_LOWER = np.array([18, 80, 80])
-YELLOW_HSV_UPPER = np.array([38, 255, 255])
-YELLOW_DILATE_PX = 12   # sarı maskeyi genişlet (çizgi kenarı hatasını kapat)
+DIFF_THRESHOLD  = 40
+MIN_AREA        = _vis_conf.get("min_area", 1000)
+MORPH_KERNEL    = 9
+BLUR_KERNEL     = 7
+CLAHE_CLIP      = 2.0
+
+YELLOW_HSV_LOWER = np.array(_vis_conf.get("yellow_hsv_lower", [18, 80, 80]))
+YELLOW_HSV_UPPER = np.array(_vis_conf.get("yellow_hsv_upper", [38, 255, 255]))
+YELLOW_DILATE_PX = _vis_conf.get("yellow_dilate_px", 12)
 
 # ─── Senaryo → Severity eşlemesi ──────────────────────────────────────────────
 SEVERITY_MAP = {
@@ -58,6 +63,7 @@ SEVERITY_MAP = {
     "kapi_anomalisi":        "HIGH",
     "levha_degisikligi":     "MEDIUM",
     "kablo_karmasa":         "LOW",
+
 }
 
 # Zemin + Kapi ROI: Resmin en ust bolgesi (tavan vs) parallax'a ugrar.

@@ -8,8 +8,13 @@ aug = transforms.Compose([
     transforms.RandomHorizontalFlip(p=0.5),
 ])
 
-input_dir = "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\waypoints\\referans_kareler"
-output_dir = "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\waypoints\\normal"
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent))
+import config_okuyucu
+
+input_dir = str(config_okuyucu.PROJECT_ROOT / "data" / "waypoints" / "referans_kareler")
+output_dir = str(config_okuyucu.PROJECT_ROOT / "data" / "waypoints" / "normal")
 os.makedirs(output_dir, exist_ok=True)
 
 for img_file in os.listdir(input_dir):

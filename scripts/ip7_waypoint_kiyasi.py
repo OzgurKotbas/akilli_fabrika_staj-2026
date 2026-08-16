@@ -58,12 +58,17 @@ def detect_changes(ref_path, test_path, output_path):
 
 # Kod doğrudan çalıştırıldığında testimizi yapalım:
 if __name__ == '__main__':
-    project_dir = "D:/STAJ/akilli_fabrika_staj-2026"
+    import sys
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).resolve().parent))
+    import config_okuyucu
+    
+    project_dir = config_okuyucu.PROJECT_ROOT
     
     # İP 6'da oluşturduğumuz verileri test için kullanıyoruz
-    ref = f"{project_dir}/data/waypoints/referans_kareler/WP01.jpg"
-    test = f"{project_dir}/data/waypoints/abnormal/WP01_degisik.jpg"
-    out = f"{project_dir}/outputs/ip7_degisiklik_maskesi.png"
+    ref = str(project_dir / "data/waypoints/referans_kareler/WP01.jpg")
+    test = str(project_dir / "data/waypoints/abnormal/WP01_degisik.jpg")
+    out = str(project_dir / "outputs/ip7_degisiklik_maskesi.png")
     
-    os.makedirs(f"{project_dir}/outputs", exist_ok=True)
+    (project_dir / "outputs").mkdir(parents=True, exist_ok=True)
     detect_changes(ref, test, out)

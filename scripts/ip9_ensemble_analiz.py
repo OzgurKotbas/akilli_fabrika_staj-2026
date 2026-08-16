@@ -49,6 +49,11 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 
+# Config okuyucu modülünü import et (scripts dizininde olduğumuz için aynı hiyerarşi)
+import sys
+sys.path.append(str(Path(__file__).resolve().parent))
+import config_okuyucu
+
 # PatchCore için anomalib (opsiyonel — yoksa sadece MOG2 çalışır)
 try:
     import torch
@@ -63,37 +68,39 @@ except ImportError:
 # =============================================================================
 # PROJE AYARLARI
 # =============================================================================
-PROJECT_DIR    = Path("D:/STAJ/akilli_fabrika_staj-2026")
-WAYPOINTS_YAML = PROJECT_DIR / "data/waypoints/waypoint_listesi.yaml"
-ALTIN_VIDEO    = PROJECT_DIR / "data/raw_videos/altin_tur_v2.mp4"
-ENGEL_VIDEO    = PROJECT_DIR / "data/raw_videos/engel.mp4"
-OUT_DIR        = PROJECT_DIR / "data/ip9_ensemble"
-REF_DIR        = PROJECT_DIR / "data/waypoints/referans_kareler"
+PROJECT_DIR    = config_okuyucu.PROJECT_ROOT
+CONFIG         = config_okuyucu.CONFIG
+
+WAYPOINTS_YAML = config_okuyucu.get_path(CONFIG.get("paths", {}).get("waypoints_yaml", "data/waypoints/waypoint_listesi.yaml"))
+ALTIN_VIDEO    = config_okuyucu.get_path(CONFIG.get("paths", {}).get("default_altin_video", "data/raw_videos/altin_tur_v2.mp4"))
+ENGEL_VIDEO    = config_okuyucu.get_path(CONFIG.get("paths", {}).get("default_engel_video", "data/raw_videos/engel.mp4"))
+OUT_DIR        = PROJECT_DIR / "data" / "ip9_ensemble"
+REF_DIR        = PROJECT_DIR / "data" / "waypoints" / "referans_kareler"
 
 # Etiketler (İP8'den — gt_bbox içeren)
-ETIKET_PATH    = PROJECT_DIR / "data/ip8_test/etiketler.json"
+ETIKET_PATH    = config_okuyucu.get_path(CONFIG.get("paths", {}).get("etiketler_json", "data/ip8_test/etiketler.json"))
 
-# PatchCore model ağırlıkları (İP6'dan — kendi verimizle eğitilen)
-PATCHCORE_CKPT = PROJECT_DIR / "outputs/model_results/ip6_patchcore_ckpt"
-
+# PatchCore model ağırlıkları
+PATCHCORE_CKPT = config_okuyucu.get_path(CONFIG.get("paths", {}).get("patchcore_ckpt", "outputs/model_results/ip6_patchcore_ckpt"))
 
 # =============================================================================
 # ALGILAMA PARAMETRELERİ
 # =============================================================================
+_vis_config = CONFIG.get("vision", {})
 
 # ── MOG2 ──────────────────────────────────────────────────────────────────────
-MOG2_HISTORY      = 200    # kaç kare geçmişi tutsun
-MOG2_THRESH       = 20     # MOG2 varyans eşiği
-MOG2_WINDOW_S     = 10     # engel videosunda kaç saniyelik pencere analiz edilsin
-MIN_AREA          = 1500   # piksel² — küçük gürültü at
-MAX_AREA_RATIO    = 0.40   # resmin bu kadarından büyük bbox'ı hizalama hatası say, at
+MOG2_HISTORY      = _vis_config.get("mog2_history", 200)
+MOG2_THRESH       = _vis_config.get("mog2_thresh", 20)
+MOG2_WINDOW_S     = _vis_config.get("mog2_window_s", 10)
+MIN_AREA          = _vis_config.get("min_area", 1500)
+MAX_AREA_RATIO    = _vis_config.get("max_area_ratio", 0.40)
 MORPH_KERNEL      = 11
-YELLOW_HSV_LOWER  = np.array([18, 80, 80])
-YELLOW_HSV_UPPER  = np.array([38, 255, 255])
-YELLOW_DILATE_PX  = 15
+YELLOW_HSV_LOWER  = np.array(_vis_config.get("yellow_hsv_lower", [18, 80, 80]))
+YELLOW_HSV_UPPER  = np.array(_vis_config.get("yellow_hsv_upper", [38, 255, 255]))
+YELLOW_DILATE_PX  = _vis_config.get("yellow_dilate_px", 15)
 
 # ── PatchCore ─────────────────────────────────────────────────────────────────
-PATCHCORE_THRESH  = 0.50   # anomali skoru bu değerin üzerindeyse uyarı
+PATCHCORE_THRESH  = _vis_config.get("patchcore_thresh", 0.50)
 IMG_SIZE          = (224, 224)   # ResNet18 giriş boyutu
 
 # ── Severity eşlemesi ─────────────────────────────────────────────────────────

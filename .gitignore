@@ -44,6 +44,51 @@ ip8_test/outputs/
 # ========================
 # IDE / OS
 # ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Ortam
+.env
+venv/
+.venv/
+env/
+
+# ========================
+# Anomalib / PyTorch
+# ========================
+# Deneme versiyonlarını dışla (v0-v9); "latest" korunuyor
+results/Patchcore/waypoint_dataset/v0/
+results/Patchcore/waypoint_dataset/v1/
+results/Patchcore/waypoint_dataset/v2/
+results/Patchcore/waypoint_dataset/v3/
+results/Patchcore/waypoint_dataset/v4/
+results/Patchcore/waypoint_dataset/v5/
+results/Patchcore/waypoint_dataset/v6/
+results/Patchcore/waypoint_dataset/v7/
+results/Patchcore/waypoint_dataset/v8/
+results/Patchcore/waypoint_dataset/v9/
+
+# ========================
+# Medya ve Buyuk Veri Klasorleri (IP3, IP8 vb.)
+# ========================
+frames/
+data/raw_videos/
+ip8_test/*.mp4
+ip8_test/data/test_ciftleri/
+ip8_test/outputs/
+
+# ========================
+# IDE / OS
+# ========================
 .vscode/
 .idea/
 *.DS_Store
@@ -53,3 +98,10 @@ Thumbs.db
 # Kisisel Geri Bildirim
 # ========================
 duzelt/
+
+# ========================
+# Ciktilar ve Loglar
+# ========================
+outputs/
+data/ip9_ensemble/*.png
+data/ip9_ensemble/*.json

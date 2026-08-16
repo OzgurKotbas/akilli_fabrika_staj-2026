@@ -42,36 +42,44 @@ from datetime import datetime
 from pathlib import Path
 from skimage.metrics import structural_similarity as ssim_func
 
+import sys
+sys.path.append(str(Path(__file__).resolve().parent))
+import config_okuyucu
+
 # =============================================================================
 # PROJE AYARLARI
 # =============================================================================
-PROJECT_DIR    = Path("D:/STAJ/akilli_fabrika_staj-2026")
-WAYPOINTS_YAML = PROJECT_DIR / "data/waypoints/waypoint_listesi.yaml"
-ALTIN_VIDEO    = PROJECT_DIR / "data/raw_videos/altin_tur_v2.mp4"
-ENGEL_VIDEO    = PROJECT_DIR / "data/raw_videos/engel.mp4"
-OUT_DIR        = PROJECT_DIR / "data/ip8_test"
+PROJECT_DIR    = config_okuyucu.PROJECT_ROOT
+CONFIG         = config_okuyucu.CONFIG
+
+WAYPOINTS_YAML = config_okuyucu.get_path(CONFIG.get("paths", {}).get("waypoints_yaml", "data/waypoints/waypoint_listesi.yaml"))
+ALTIN_VIDEO    = config_okuyucu.get_path(CONFIG.get("paths", {}).get("default_altin_video", "data/raw_videos/altin_tur_v2.mp4"))
+ENGEL_VIDEO    = config_okuyucu.get_path(CONFIG.get("paths", {}).get("default_engel_video", "data/raw_videos/engel.mp4"))
+OUT_DIR        = PROJECT_DIR / "data" / "ip8_test"
 
 # =============================================================================
 # ALGILAMA PARAMETRELERI
 # =============================================================================
+_vis_config = CONFIG.get("vision", {})
+
 # Sarı zemin cizgisi HSV aralik (fabrika standart sari)
-YELLOW_HSV_LOWER = np.array([18, 80, 80])
-YELLOW_HSV_UPPER = np.array([38, 255, 255])
-YELLOW_DILATE_PX = 15
+YELLOW_HSV_LOWER = np.array(_vis_config.get("yellow_hsv_lower", [18, 80, 80]))
+YELLOW_HSV_UPPER = np.array(_vis_config.get("yellow_hsv_upper", [38, 255, 255]))
+YELLOW_DILATE_PX = _vis_config.get("yellow_dilate_px", 15)
 
 # Fark analizi
-MIN_AREA       = 1500   # piksel kare (kucuk gurultuleri at)
-MAX_AREA_RATIO = 0.40   # resmin bu oranini gecen dev bbox'i at
-MORPH_KERNEL   = 11     # morfolojik temizlik
-BLUR_KERNEL    = 5      # Gaussian bulanik
+MIN_AREA       = _vis_config.get("min_area", 1500)
+MAX_AREA_RATIO = _vis_config.get("max_area_ratio", 0.40)
+MORPH_KERNEL   = 11
+BLUR_KERNEL    = 5
 
 # MOG2 arka plan cikarma
-MOG2_HISTORY   = 200    # MOG2 gecmis kare sayisi
-MOG2_THRESH    = 20     # MOG2 esik degeri
-MOG2_DETECT_S  = 10     # Engel videosunun analizini kac saniye yap (son kismi tercih)
+MOG2_HISTORY   = _vis_config.get("mog2_history", 200)
+MOG2_THRESH    = _vis_config.get("mog2_thresh", 20)
+MOG2_DETECT_S  = _vis_config.get("mog2_window_s", 10)
 
 # Eslestirme
-HISTOGRAM_BINS = 64     # histogram korelasyonu icin kutu sayisi
+HISTOGRAM_BINS = 64
 
 # Senaryo -> severity
 SEVERITY_MAP = {

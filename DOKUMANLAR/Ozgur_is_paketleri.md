@@ -68,8 +68,8 @@ Proje 16 iş paketine bölünmüştür (İP15 = LingBot-Map stretch). Her iş pa
 | İP7 | ✅ | 08.08.2026 | ORB ile hizalama yapıldı, maske outputs/ip7_degisiklik_maskesi.png olarak alındı |
 | İP8 | ✅ | 10.08.2026 | engel.mp4 çekildi, otomatik çift eşleştirici yazıldı, maskeler çıkarıldı. etiketler.json'a gt_bbox koordinatları eklendi (15.08.2026); severity HIGH'a düzeltildi. İP9 TP/FP ölçümü için hazır. |
 | İP9 | ✅ | 15.08.2026 | Ensemble scripti çalıştırıldı. TP=1, FP=2, FN=2 (F1=0.333) ölçüldü. MOG2 sabit zaman bug'ı ve PatchCore global embedding hassasiyeti analiz edilip loglandı. |
-| İP10 | ⬜ | | |
-| İP11 | ⬜ | | |
+| İP10 | ✅ | 17.08.2026 | `scripts/ip10_mqtt_yayini.py` oluşturuldu. paho-mqtt ile `patrol/alert` yayını yapıldı (çevrimdışı kayıt da destekli). JSON formatı ve şema uyumluluğu eklendi. |
+| İP11 | ✅ | 17.08.2026 | `scripts/ip11_rapor_uret.py` ve `docs/rapor_sablonu.md.j2` oluşturuldu. Jinja2 ile devriye raporları (MD ve HTML) başarıyla üretildi. |
 | İP12 | ⬜ | | |
 | İP13 | ⬜ | | |
 | İP14 | ⬜ | | |

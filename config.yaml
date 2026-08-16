@@ -1,0 +1,33 @@
+# Akıllı Fabrika — Pan-Tilt Robot Projesi
+# Anomali Tespiti Modülü Ortak Yapılandırma Dosyası
+
+mqtt:
+  broker: "localhost"
+  port: 1883
+  topic: "patrol/alert"
+
+vision:
+  # PatchCore Ayarları
+  patchcore_thresh: 0.50
+  
+  # MOG2 (Arka Plan Çıkarma) Ayarları
+  mog2_history: 200
+  mog2_thresh: 20
+  mog2_window_s: 10
+  min_area: 1500
+  max_area_ratio: 0.40
+  
+  # Sarı Güvenlik Çizgisi HSV Sınırları (H, S, V)
+  yellow_hsv_lower: [18, 80, 80]
+  yellow_hsv_upper: [38, 255, 255]
+  yellow_dilate_px: 12
+
+paths:
+  # Proje kök dizinine (ROOT) göre göreceli yollar
+  waypoints_yaml: "data/waypoints/waypoint_listesi.yaml"
+  patchcore_ckpt: "outputs/model_results/ip6_patchcore_ckpt"
+  etiketler_json: "data/ip8_test/etiketler.json"
+  
+  # Varsayılan test videoları
+  default_altin_video: "data/raw_videos/altin_tur_v2.mp4"
+  default_engel_video: "data/raw_videos/engel.mp4"

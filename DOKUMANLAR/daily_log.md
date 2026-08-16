@@ -287,3 +287,40 @@ Sistemi sabit değerli (hardcoded) zamanlamadan kurtarıp, zaman damgalarını d
 
 > **Genel durum (15 Ağustos itibarıyla):** İP1–İP9 tamamlandı. Kodlar hardcode'dan temizlendi ve dinamik YAML okumaya geçirildi. Bu sayede Precision değeri yükseltildi. Artık bu uyarıların haberleşme protokolüyle iletileceği İP10 (MQTT) aşamasına geçilecek.
 
+---
+
+### 📅 17 Ağustos 2026 (Pazartesi)
+
+**Aktif İş Paketleri:** İP10 (MQTT Yayını) · İP11 (Devriye Raporu)
+
+**Bugün yapılanlar:**
+
+- [x] **İP10: MQTT Yayını (`patrol/alert`) eklendi.**
+  - `ip9_ensemble_analiz.py` çıktılarını MQTT mesajlarına dönüştüren `scripts/ip10_mqtt_yayini.py` yazıldı.
+  - İstenen JSON şeması tam olarak uygulandı (`severity`, `waypoint`, `score`, `det_count`, `img_ref`, vs.).
+  - MQTT broker yokken veya ulaşılamadığında verileri yerel JSON dosyasına yazan (`--offline`) mod eklendi.
+  - Şema uyumluluğunu doğrulamak için abone/test betiği (`scripts/mqtt_test_abone.py`) geliştirildi.
+
+- [x] **İP11: Devriye Raporu v1 (Jinja2) tamamlandı.**
+  - Rapor formatını belirleyen `docs/rapor_sablonu.md.j2` dosyası hazırlandı.
+  - Uyarıları önceliğe göre (HIGH > MEDIUM > LOW) dizen `scripts/ip11_rapor_uret.py` yazıldı.
+  - Sistem hem Markdown (`.md`) hem de HTML (`.html`) formatında devriye raporları üretir hale getirildi.
+  - Sonuçlar `outputs/devriye_raporu/` içerisine zaman damgalı olarak ve en son rapor her zaman `son_devriye_raporu.md` olacak şekilde kaydedildi.
+
+**Sonuç:** Alarm sistemi ve raporlama entegrasyonu tamamen tamamlandı. Artık tespit edilen anomaliler anında ilgili yerlere MQTT ile iletilebilir ve yöneticilere Markdown formatında derli toplu raporlanabilir.
+
+**🏆 İP10 ve İP11 bitti kriterleri başarıyla karşılandı!**
+
+**Sıradaki Adım:** İP12 (Yanlış alarm ayarları ve ışık/gölge testleri).
+
+---
+
+### 🛠️ Kod Refactoring ve Ürünleştirme Çalışması (17 Ağustos 2026 - Ek)
+
+**Yapılanlar:** Projenin akademik / AR-GE prototipi seviyesinden ticari olarak satılabilir bir "ürün" seviyesine çıkarılması için tüm kod tabanı temizlendi.
+- [x] Ana dizine `config.yaml` eklendi.
+- [x] `scripts/config_okuyucu.py` yazıldı. Tüm Python scriptleri (İP7, İP8, İP9, İP10, Demo) hardcoded parametrelerini (örneğin MQTT broker ip'si, PatchCore eşik değeri, Sarı renk sınırları) artık Python dosyasının içinden değil doğrudan bu `config.yaml` dosyasından okuyor.
+- [x] Mutlak (absolute) dosya yolları (`D:\STAJ\akilli_fabrika_staj-2026\...`) tamamen temizlendi. Yerine projenin kök dizinini otomatik bulan dinamik (`Path(__file__).resolve()`) yapıya geçildi. 
+- [x] Sistem artık başka bir klasöre, diske veya Linux / Docker ortamına taşındığında "Dosya Yolu Bulunamadı" hatası vermeden anında çalışmaya devam edecektir.
+
+

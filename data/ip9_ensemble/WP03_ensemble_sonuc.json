@@ -4,7 +4,7 @@
   "senaryo": "S2",
   "referans": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\waypoints\\referans_kareler\\WP03.jpg",
   "test": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP03_degisik.jpg",
-  "mog2_fg_ratio": 0.0956,
+  "mog2_fg_ratio": 0.0957,
   "mog2_nesne_sayisi": 5,
   "mog2_nesneler": [
     {
@@ -78,5 +78,5 @@
   },
   "ensemble_gorseli": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip9_ensemble\\WP03_ensemble_analiz.png",
   "fg_mog2": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip9_ensemble\\WP03_fg_mog2.png",
-  "ts": "2026-08-15T02:02:06.942961"
+  "ts": "2026-08-17T02:08:36.745323"
 }

@@ -422,3 +422,46 @@ Bununla birlikte, F1=0.400'ün düşük olmasının sebepleri tamamen fiziksel l
 2. **WP03 Neden Yanlış Alarm Üretiyor (False Positive)?** MOG2 harekete aşırı duyarlıdır. WP03'te parlak zeminler ve kapıdaki ışık değişimleri "nesne" (FP) zannediliyor. 
 
 Sonuç olarak: Kodumuzdaki mantık hataları (hardcode) temizlendi. Kalan sorunlar veri bilimi ve fiziksel sensör sorunlarıdır. Artık elimizde haberleşmeyle iletilebilecek (İP10) temiz bir yapı var.
+
+---
+
+## İP10 ve İP11 — MQTT Yayını ve Devriye Raporu (17 Ağustos 2026)
+
+**User:**
+Rapor oluştururken `.md` yerine neden Jinja2 şablonları kullanmamızı tavsiye ettin? İleride `.md` formatında başka raporlar oluştururken aynı kütüphaneyi kullanmak zorunda mıyım?
+
+**AI:**
+Rapor oluşturmada doğrudan Python üzerinden f-string ile büyük metinler yazmak (`print(f"| {wp} | {score} |")` gibi) kodu inanılmaz karmaşıklaştırır ve bakımı imkansız hale getirir. **Jinja2** kullanmamızın nedeni, raporun "tasarımını" (şablonunu) "verisinden" ayırmaktır (MVC mimarisine benzer).
+Böylece kodun içinde satır satır markdown yazmak yerine, `docs/rapor_sablonu.md.j2` dosyasına gidip sadece görselliği değiştirebilirsin (örneğin tabloya yeni bir sütun eklemek istersen Python koduna hiç dokunmazsın). İleride başka tür bir rapor yazacaksan Jinja2 kullanmak zorunda değilsin ama karmaşık ve çok satırlı raporlarda standart endüstri pratiği Jinja2 gibi bir template engine (şablon motoru) kullanmaktır.
+
+---
+
+**User:**
+MQTT yayınındaki JSON mesajlarında `severity` değerini nasıl belirledin? Gerçek bir fabrikada bu değerler nasıl kullanılacak?
+
+**AI:**
+Projenin ihtiyaçlarına göre uyarıları önceliklendirebilmek çok önemlidir. Her anomali aynı seviyede tehlikeli değildir. Bu nedenle 4 seviyeli bir sıralama kurguladık: `HIGH`, `MEDIUM`, `LOW`, `NONE`.
+Örneğin; `yerde_birakilan_cisim` veya `yol_engeli` (forklift veya robotun çarpabileceği şeyler) `HIGH` seviyesindedir. Ancak `kablo_karmasa` gibi daha az kritik bir durum `LOW` olarak işaretlenebilir.
+Gerçek bir fabrikada, KONTROL modülü bu MQTT mesajını okuduğunda `severity` değerine bakar:
+- Eğer `HIGH` ise: Robot anında durup acil durum sireni çalabilir.
+- Eğer `LOW` ise: Robot devriyesine devam eder, sadece yöneticinin paneline (veya ürettiğimiz devriye raporuna) not olarak ekler.
+Bu sayede sistem akıllı ve reaktif hale gelir.
+
+---
+
+## Proje Ürünleştirme ve Hardcode Temizliği (17 Ağustos 2026)
+
+**User:**
+Projemiz müşteriye satılacak duruma geldiğinde neden "D:/STAJ/" gibi dizinlerin veya "engel.mp4" gibi dosyaların kodun içinde (hardcode) kalması problem yaratır? 
+
+**AI:**
+Kod içine gömülü (hardcoded) yollar ve ayarlar bir projeyi sadece senin bilgisayarında çalışan bir laboratuvar projesine dönüştürür.
+Eğer müşteri bu projeyi alıp "C:/RobotApp/" klasörüne kurarsa veya Linux tabanlı bir sunucuya atarsa program anında "Dosya Yolu Bulunamadı" hatası vererek çöker. Aynı şekilde, müşteri kendi kamerasından RTSP canlı yayınını veya kendi fabrikasının ortam ışığı değerlerini (`yellow_hsv`) kullanmak isteyecektir. Bu değerler senin kodunun içinde kaybolursa, sistemi her sattığında koda girip elle değişiklik yapman gerekir; bu da ürünleştirme mantığına tamamen aykırıdır.
+
+**User:**
+Peki bu problemi nasıl çözdük? Yapılandırma dosyası (`config.yaml`) mantığı nedir?
+
+**AI:**
+Sistemdeki tüm "değişken" ve "kurulum bağımlı" parametreleri (dosya yolları, MQTT broker IP'si, algılayıcıların tolerans sınırları) koddan tamamen temizleyip merkezi bir `config.yaml` dosyasına taşıdık. 
+Ayrıca dosya yollarını bulmak için `Path(__file__).resolve().parent.parent` mantığını kurduk; yani program nerede çalışırsa çalışsın kendi kök dizinini otomatik bulup tüm yolları ona göre inşa edecek (relative path). 
+Artık programı kurduğumuz fabrikanın ağ yetkilisi koda hiç dokunmadan sadece `config.yaml` dosyasını açıp MQTT adresini değiştirdiğinde sistem sorunsuz çalışmaya başlayacak. Bu, yazılım mühendisliğinde projeyi "production-ready" (üretime hazır) yapan en temel standartlardan biridir.
