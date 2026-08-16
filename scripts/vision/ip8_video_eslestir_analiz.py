@@ -43,8 +43,8 @@ from pathlib import Path
 from skimage.metrics import structural_similarity as ssim_func
 
 import sys
-sys.path.append(str(Path(__file__).resolve().parent))
-import config_okuyucu
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+from scripts.core import config_okuyucu
 
 # =============================================================================
 # PROJE AYARLARI

@@ -30,8 +30,8 @@ except ImportError:
     sys.exit(1)
 
 import sys
-sys.path.append(str(Path(__file__).resolve().parent))
-import config_okuyucu
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+from scripts.core import config_okuyucu
 
 _mqtt_conf = config_okuyucu.CONFIG.get("mqtt", {})
 MQTT_BROKER = _mqtt_conf.get("broker", "localhost")

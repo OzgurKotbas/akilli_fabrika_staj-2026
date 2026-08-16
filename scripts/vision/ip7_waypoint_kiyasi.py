@@ -60,8 +60,8 @@ def detect_changes(ref_path, test_path, output_path):
 if __name__ == '__main__':
     import sys
     from pathlib import Path
-    sys.path.append(str(Path(__file__).resolve().parent))
-    import config_okuyucu
+    sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+    from scripts.core import config_okuyucu
     
     project_dir = config_okuyucu.PROJECT_ROOT
     

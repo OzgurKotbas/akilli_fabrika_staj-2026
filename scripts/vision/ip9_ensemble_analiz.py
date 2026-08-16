@@ -51,8 +51,8 @@ from pathlib import Path
 
 # Config okuyucu modülünü import et (scripts dizininde olduğumuz için aynı hiyerarşi)
 import sys
-sys.path.append(str(Path(__file__).resolve().parent))
-import config_okuyucu
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+from scripts.core import config_okuyucu
 
 # PatchCore için anomalib (opsiyonel — yoksa sadece MOG2 çalışır)
 try:

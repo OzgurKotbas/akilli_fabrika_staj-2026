@@ -10,8 +10,8 @@ aug = transforms.Compose([
 
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parent))
-import config_okuyucu
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+from scripts.core import config_okuyucu
 
 input_dir = str(config_okuyucu.PROJECT_ROOT / "data" / "waypoints" / "referans_kareler")
 output_dir = str(config_okuyucu.PROJECT_ROOT / "data" / "waypoints" / "normal")

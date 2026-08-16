@@ -56,8 +56,8 @@ from datetime import datetime
 from pathlib import Path
 
 import sys
-sys.path.append(str(Path(__file__).resolve().parent))
-import config_okuyucu
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+from scripts.core import config_okuyucu
 
 # paho-mqtt isteğe bağlı
 try:

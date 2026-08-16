@@ -2,8 +2,8 @@
 import yaml
 from pathlib import Path
 
-# Proje kök dizini (her zaman bu dosyanın 2 üst dizini)
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+# Proje kök dizini (bu dosyanın 3 üst dizini: scripts/core/config_okuyucu.py -> scripts/core -> scripts -> kök)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CONFIG_PATH = PROJECT_ROOT / "config.yaml"
 
 def load_config():

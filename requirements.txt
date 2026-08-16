@@ -1,0 +1,14 @@
+# Görüntü İşleme ve Bilimsel Hesaplama
+opencv-python>=4.8.0
+numpy>=1.24.0
+scikit-image>=0.21.0
+
+# Haberleşme ve Raporlama
+paho-mqtt>=1.6.1
+Jinja2>=3.1.2
+PyYAML>=6.0
+
+# Derin Öğrenme / Anomali (Anomalib kullanılıyorsa gereklidir)
+# anomalib
+# torch>=2.0.0
+# torchvision>=0.15.0

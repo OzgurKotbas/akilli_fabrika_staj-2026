@@ -53,10 +53,14 @@ except ImportError:
     print("[UYARI] jinja2 bulunamadi — basit MD formatına geçiliyor.")
     print("        Kurmak için: pip install jinja2")
 
+import sys
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+from scripts.core import config_okuyucu
+
 # ──────────────────────────────────────────────────────────────────────────────
 # PROJE AYARLARI
 # ──────────────────────────────────────────────────────────────────────────────
-PROJECT_DIR  = Path(__file__).resolve().parent.parent
+PROJECT_DIR  = config_okuyucu.PROJECT_ROOT
 ENSEMBLE_DIR = PROJECT_DIR / "data" / "ip9_ensemble"
 SABLON_PATH  = PROJECT_DIR / "docs" / "rapor_sablonu.md.j2"
 OUT_DIR      = PROJECT_DIR / "outputs" / "devriye_raporu"

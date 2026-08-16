@@ -323,4 +323,12 @@ Sistemi sabit değerli (hardcoded) zamanlamadan kurtarıp, zaman damgalarını d
 - [x] Mutlak (absolute) dosya yolları (`D:\STAJ\akilli_fabrika_staj-2026\...`) tamamen temizlendi. Yerine projenin kök dizinini otomatik bulan dinamik (`Path(__file__).resolve()`) yapıya geçildi. 
 - [x] Sistem artık başka bir klasöre, diske veya Linux / Docker ortamına taşındığında "Dosya Yolu Bulunamadı" hatası vermeden anında çalışmaya devam edecektir.
 
+### 🛠️ Gelişmiş Mimari Refactoring ve Paketleme (17 Ağustos 2026 - Devam)
+
+**Yapılanlar:** Proje tamamen standart Python paket (Package) yapısına geçirildi.
+- [x] `requirements.txt` oluşturuldu. Kurulum bağımlılıkları (`opencv-python`, `paho-mqtt`, `Jinja2` vb.) belgelendi.
+- [x] Dağınık haldeki `scripts/` klasörü, modüler alt dizinlere ( `core/`, `data_prep/`, `vision/`, `comms/` ) bölündü.
+- [x] Tüm Python dosyalarındaki import yolları (örn: `from scripts.core import config_okuyucu`) standartlarına uygun olarak güncellendi ve test edildi.
+- [x] Son kullanıcı için tüm çalıştırma komutlarını içeren detaylı `KULLANIM_KILAVUZU.md` rehberi oluşturuldu. Artık sistemi sıfırdan kuracak biri bile adımları kolayca takip edebilir.
+
 

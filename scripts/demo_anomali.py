@@ -63,8 +63,8 @@ import cv2
 import numpy as np
 
 import sys
-sys.path.append(str(Path(__file__).resolve().parent))
-import config_okuyucu
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from scripts.core import config_okuyucu
 
 # ──────────────────────────────────────────────────────────────────────────────
 # PROJE YOLLARI
@@ -1222,7 +1222,7 @@ def main():
     yayinci = None
     if args.mqtt:
         try:
-            from ip10_mqtt_yayini import PatrolMQTTYayinci
+            from scripts.comms.ip10_mqtt_yayini import PatrolMQTTYayinci
             yayinci = PatrolMQTTYayinci()
         except ImportError:
             print("  [UYARI] ip10_mqtt_yayini.py bulunamadı, MQTT kapalı.")
