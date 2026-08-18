@@ -1,18 +1,18 @@
 {
   "tur": "ip9_mog2_patchcore_ensemble",
-  "tarih": "2026-08-17T02:38:47.558033",
+  "tarih": "2026-08-18T20:06:58.138431",
   "engel_video": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\raw_videos\\engel.mp4",
   "toplam_wp": 3,
-  "uyari_sayisi": 2,
+  "uyari_sayisi": 3,
   "mimari": "MOG2 + PatchCore Ensemble (SSIM/ORB yok)",
   "patchcore_aktif": true,
   "metrikler": {
-    "TP": 1,
+    "TP": 2,
     "FP": 1,
-    "FN": 2,
-    "precision": 0.5,
-    "recall": 0.333,
-    "F1": 0.4
+    "FN": 1,
+    "precision": 0.667,
+    "recall": 0.667,
+    "F1": 0.667
   },
   "sonuclar": [
     {
@@ -21,17 +21,45 @@
       "senaryo": "S1",
       "referans": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\waypoints\\referans_kareler\\WP01.jpg",
       "test": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP01_degisik.jpg",
-      "mog2_fg_ratio": 0.0102,
-      "mog2_nesne_sayisi": 0,
-      "mog2_nesneler": [],
-      "mog2_uyari": false,
-      "patchcore_score": 0.0965,
-      "patchcore_esik": 0.5,
+      "mog2_fg_ratio": 0.0255,
+      "mog2_nesne_sayisi": 3,
+      "mog2_nesneler": [
+        {
+          "x": 282,
+          "y": 0,
+          "w": 104,
+          "h": 114,
+          "area": 11856,
+          "cx": 334,
+          "cy": 57
+        },
+        {
+          "x": 209,
+          "y": 275,
+          "w": 49,
+          "h": 118,
+          "area": 5782,
+          "cx": 233,
+          "cy": 334
+        },
+        {
+          "x": 117,
+          "y": 110,
+          "w": 41,
+          "h": 107,
+          "area": 4387,
+          "cx": 137,
+          "cy": 163
+        }
+      ],
+      "mog2_uyari": true,
+      "patchcore_score": 0.3803,
+      "patchcore_esik": 0.4,
       "patchcore_uyari": false,
       "patchcore_aktif": true,
-      "is_alert": false,
-      "severity": "NONE",
-      "karar_aciklama": "Normal — iki katman da uyarı vermedi",
+      "is_alert": true,
+      "severity": "HIGH",
+      "karar_aciklama": "MOG2: 3 nesne",
       "gt_bbox": {
         "x": 190,
         "y": 196,
@@ -42,14 +70,14 @@
       },
       "tp_fp": {
         "tp": 0,
-        "fp": 0,
+        "fp": 1,
         "fn": 1,
-        "iou_best": 0.0,
-        "not": "Tespit yok — False Negative"
+        "iou_best": 0.094,
+        "not": "FP+FN — IoU=0.094 < 0.3"
       },
       "ensemble_gorseli": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip9_ensemble\\WP01_ensemble_analiz.png",
       "fg_mog2": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip9_ensemble\\WP01_fg_mog2.png",
-      "ts": "2026-08-17T02:38:43.929961"
+      "ts": "2026-08-18T20:06:54.829250"
     },
     {
       "waypoint_id": "WP02",
@@ -57,36 +85,54 @@
       "senaryo": "S3",
       "referans": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\waypoints\\referans_kareler\\WP02.jpg",
       "test": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP02_degisik.jpg",
-      "mog2_fg_ratio": 0.0871,
-      "mog2_nesne_sayisi": 2,
+      "mog2_fg_ratio": 0.2112,
+      "mog2_nesne_sayisi": 4,
       "mog2_nesneler": [
         {
-          "x": 137,
-          "y": 556,
-          "w": 240,
-          "h": 308,
-          "area": 73920,
-          "cx": 257,
-          "cy": 710
+          "x": 95,
+          "y": 411,
+          "w": 331,
+          "h": 453,
+          "area": 149943,
+          "cx": 260,
+          "cy": 637
         },
         {
-          "x": 204,
-          "y": 536,
-          "w": 130,
-          "h": 87,
-          "area": 11310,
-          "cx": 269,
-          "cy": 579
+          "x": 80,
+          "y": 54,
+          "w": 117,
+          "h": 218,
+          "area": 25506,
+          "cx": 138,
+          "cy": 163
+        },
+        {
+          "x": 243,
+          "y": 120,
+          "w": 95,
+          "h": 107,
+          "area": 10165,
+          "cx": 290,
+          "cy": 173
+        },
+        {
+          "x": 161,
+          "y": 140,
+          "w": 46,
+          "h": 60,
+          "area": 2760,
+          "cx": 184,
+          "cy": 170
         }
       ],
       "mog2_uyari": true,
-      "patchcore_score": 0.0785,
-      "patchcore_esik": 0.5,
+      "patchcore_score": 0.3198,
+      "patchcore_esik": 0.4,
       "patchcore_uyari": false,
       "patchcore_aktif": true,
       "is_alert": true,
       "severity": "HIGH",
-      "karar_aciklama": "MOG2: 2 nesne",
+      "karar_aciklama": "MOG2: 4 nesne",
       "gt_bbox": {
         "x": 137,
         "y": 536,
@@ -99,12 +145,12 @@
         "tp": 1,
         "fp": 0,
         "fn": 0,
-        "iou_best": 0.878,
-        "not": "TP — IoU=0.878 >= 0.3"
+        "iou_best": 0.493,
+        "not": "TP — IoU=0.493 >= 0.3"
       },
       "ensemble_gorseli": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip9_ensemble\\WP02_ensemble_analiz.png",
       "fg_mog2": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip9_ensemble\\WP02_fg_mog2.png",
-      "ts": "2026-08-17T02:38:45.692131"
+      "ts": "2026-08-18T20:06:56.481895"
     },
     {
       "waypoint_id": "WP03",
@@ -112,63 +158,36 @@
       "senaryo": "S2",
       "referans": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\waypoints\\referans_kareler\\WP03.jpg",
       "test": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP03_degisik.jpg",
-      "mog2_fg_ratio": 0.0957,
-      "mog2_nesne_sayisi": 5,
+      "mog2_fg_ratio": 0.1636,
+      "mog2_nesne_sayisi": 2,
       "mog2_nesneler": [
         {
-          "x": 212,
+          "x": 42,
           "y": 0,
-          "w": 138,
-          "h": 206,
-          "area": 28428,
-          "cx": 281,
-          "cy": 103
+          "w": 382,
+          "h": 414,
+          "area": 158148,
+          "cx": 233,
+          "cy": 207
         },
         {
-          "x": 220,
-          "y": 215,
-          "w": 122,
-          "h": 198,
-          "area": 24156,
-          "cx": 281,
-          "cy": 314
-        },
-        {
-          "x": 155,
-          "y": 48,
-          "w": 61,
-          "h": 273,
-          "area": 16653,
-          "cx": 185,
-          "cy": 184
-        },
-        {
-          "x": 390,
-          "y": 18,
-          "w": 30,
-          "h": 219,
-          "area": 6570,
-          "cx": 405,
-          "cy": 127
-        },
-        {
-          "x": 351,
-          "y": 65,
-          "w": 35,
-          "h": 145,
-          "area": 5075,
-          "cx": 368,
-          "cy": 137
+          "x": 0,
+          "y": 205,
+          "w": 112,
+          "h": 77,
+          "area": 8624,
+          "cx": 56,
+          "cy": 243
         }
       ],
       "mog2_uyari": true,
-      "patchcore_score": 0.2457,
-      "patchcore_esik": 0.5,
-      "patchcore_uyari": false,
+      "patchcore_score": 0.515,
+      "patchcore_esik": 0.4,
+      "patchcore_uyari": true,
       "patchcore_aktif": true,
       "is_alert": true,
       "severity": "HIGH",
-      "karar_aciklama": "MOG2: 5 nesne",
+      "karar_aciklama": "MOG2: 2 nesne + PatchCore: 0.515 > 0.4",
       "gt_bbox": {
         "x": 155,
         "y": 0,
@@ -178,15 +197,15 @@
         "not": "Kapı bölgesi değişimi — MOG2 5 contour tespit etti (toplam alan: 80882 px²). x: min(155,212,220,390,351)=155, y: min(0,215,48,18,65)=0, x2: max(216,350,342,420,386)=420, y2: max(206,413,321,237,210)=413"
       },
       "tp_fp": {
-        "tp": 0,
-        "fp": 1,
-        "fn": 1,
-        "iou_best": 0.26,
-        "not": "FP+FN — IoU=0.260 < 0.3"
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "iou_best": 0.692,
+        "not": "TP — IoU=0.692 >= 0.3"
       },
       "ensemble_gorseli": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip9_ensemble\\WP03_ensemble_analiz.png",
       "fg_mog2": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip9_ensemble\\WP03_fg_mog2.png",
-      "ts": "2026-08-17T02:38:47.557033"
+      "ts": "2026-08-18T20:06:58.137833"
     }
   ]
 }

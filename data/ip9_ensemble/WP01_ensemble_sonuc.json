@@ -4,17 +4,45 @@
   "senaryo": "S1",
   "referans": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\waypoints\\referans_kareler\\WP01.jpg",
   "test": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP01_degisik.jpg",
-  "mog2_fg_ratio": 0.0102,
-  "mog2_nesne_sayisi": 0,
-  "mog2_nesneler": [],
-  "mog2_uyari": false,
-  "patchcore_score": 0.0965,
-  "patchcore_esik": 0.5,
+  "mog2_fg_ratio": 0.0255,
+  "mog2_nesne_sayisi": 3,
+  "mog2_nesneler": [
+    {
+      "x": 282,
+      "y": 0,
+      "w": 104,
+      "h": 114,
+      "area": 11856,
+      "cx": 334,
+      "cy": 57
+    },
+    {
+      "x": 209,
+      "y": 275,
+      "w": 49,
+      "h": 118,
+      "area": 5782,
+      "cx": 233,
+      "cy": 334
+    },
+    {
+      "x": 117,
+      "y": 110,
+      "w": 41,
+      "h": 107,
+      "area": 4387,
+      "cx": 137,
+      "cy": 163
+    }
+  ],
+  "mog2_uyari": true,
+  "patchcore_score": 0.3803,
+  "patchcore_esik": 0.4,
   "patchcore_uyari": false,
   "patchcore_aktif": true,
-  "is_alert": false,
-  "severity": "NONE",
-  "karar_aciklama": "Normal — iki katman da uyarı vermedi",
+  "is_alert": true,
+  "severity": "HIGH",
+  "karar_aciklama": "MOG2: 3 nesne",
   "gt_bbox": {
     "x": 190,
     "y": 196,
@@ -25,12 +53,12 @@
   },
   "tp_fp": {
     "tp": 0,
-    "fp": 0,
+    "fp": 1,
     "fn": 1,
-    "iou_best": 0.0,
-    "not": "Tespit yok — False Negative"
+    "iou_best": 0.094,
+    "not": "FP+FN — IoU=0.094 < 0.3"
   },
   "ensemble_gorseli": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip9_ensemble\\WP01_ensemble_analiz.png",
   "fg_mog2": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip9_ensemble\\WP01_fg_mog2.png",
-  "ts": "2026-08-17T02:38:43.929961"
+  "ts": "2026-08-18T20:06:54.829250"
 }
