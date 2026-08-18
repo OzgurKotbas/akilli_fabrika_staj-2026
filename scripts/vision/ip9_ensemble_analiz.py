@@ -19,27 +19,41 @@ Bu script iki açı-bağımsız katmanı birleştirir:
   Farklı açıyla çekilmiş ikinci videoyla kıyaslama yapmaz — bu yüzden açıya
   tamamen bağımsızdır.
 
-  KATMAN 2 → PatchCore Anomali Skoru
-  ------------------------------------
-  İP5'te MVTec-AD'de eğitilen PatchCore mantığının waypoint karelere
-  uyarlanması: altın tur kareleri "normal" sınıf, güncel kare → anomali skoru.
-  Embedding (özellik vektörü) seviyesinde kıyas yapıldığından ~40° açı
-  farkına kadar dayanıklıdır.
+  KATMAN 2 → PatchCore Anomali Skoru (SPATIAL — İP12 düzeltmesi)
+  ---------------------------------------------------------------
+  ResNet18 özellik çıkarıcısı SON AvgPool katmanı KULLANILMAZ.
+  Bunun yerine spatial özellik haritaları (512 x 7 x 7 = 49 patch) elde edilir.
+  Her patch, memory bank'teki en benzer referans patch'e göre puanlanır.
+  Karenin anomali skoru: en YÜKSEK (en az benzer) patch skoru.
+  Bu, küçük yerel anomalilerin global ortalamada kaybolmasını engeller.
 
   KARAR MANTIGI:
   --------------
   is_alert = (mog2_nesne_sayisi > 0) OR (patchcore_score > PATCHCORE_THRESH)
   severity = HIGH/MEDIUM/LOW  →  SEVERITY_MAP'ten
 
+DÜZELTMELER (İP12 — 18.08.2026):
+----------------------------------
+  1. MOG2 Sabit Zaman Bug'ı: Önceki kodda son 30 kare için cap.set() ile
+     videoda geriye atlanıyordu. MOG2 geçmiş (history) tabanlı olduğundan
+     zamanda geriye atmak arka plan modelini bozar ve FP/FN hataları üretir.
+     Çözüm: Tek geçiş (single-pass) — sadece son 30 kareye gelindiğinde
+     learningRate=0 yapılarak model dondurulur, maske o karelerden alınır.
+  2. PatchCore Global Embedding Hassasiyeti: Eski kod [:-1] ile AveragePool
+     dahildi → 512 boyutlu tek vektör, küçük anomaliler ortalamada kayboldu.
+     Çözüm: [:-2] ile AveragePool çıkarıldı → 512x7x7 spatial patch'ler.
+     Her test patch'inin en iyi referans patch'e benzerliği bulunur;
+     en kötü (en düşük benzerlikli) patch skoru anomali skoru olur.
+
 KULLANIM:
     cd D:/STAJ/akilli_fabrika_staj-2026
-    python scripts/ip9_ensemble_analiz.py
+    python scripts/vision/ip9_ensemble_analiz.py
 
     # Sadece MOG2 katmanı (PatchCore modeli yoksa):
-    python scripts/ip9_ensemble_analiz.py --no-patchcore
+    python scripts/vision/ip9_ensemble_analiz.py --no-patchcore
 
     # Belirli eşik ile:
-    python scripts/ip9_ensemble_analiz.py --patchcore-thresh 0.45
+    python scripts/vision/ip9_ensemble_analiz.py --patchcore-thresh 0.45
 """
 
 import cv2
@@ -157,6 +171,12 @@ def mog2_detect(engel_video: str,
     Engel videosunu kendi içinde analiz eder.
     Referans videoyla KIYASLAMA YAPILMAZ — bu yüzden açıya bağımsız.
 
+    İP12 DÜZELTMESİ — Tek Geçiş (Single-Pass):
+    Eski kodda son 30 kare için cap.set() ile videoda geriye atlanıyordu.
+    MOG2 geçmiş tabanlı olduğundan zamanda geriye atmak modeli bozar.
+    Çözüm: Baştan sona TEK GEÇİŞ. Son 30 kareye gelindiğinde
+    learningRate=0 yapılarak model dondurulur ve maske o karelerden alınır.
+
     Döndürür: (sample_frame, fg_mask, fg_ratio, nesne_listesi)
     """
     cap = cv2.VideoCapture(str(engel_video))
@@ -171,6 +191,8 @@ def mog2_detect(engel_video: str,
     end_s    = min(total_s, start_s + window_s)
     start_fr = int(start_s * fps)
     end_fr   = int(end_s   * fps)
+    # Son 30 kare: model dondurulacak; en az 30 kare bırak
+    freeze_fr = max(start_fr, end_fr - 30)
 
     mog2 = cv2.createBackgroundSubtractorMOG2(
         history=MOG2_HISTORY, varThreshold=MOG2_THRESH, detectShadows=True
@@ -180,29 +202,30 @@ def mog2_detect(engel_video: str,
     k_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (MORPH_KERNEL, MORPH_KERNEL))
 
     sample_frame = None
+    fg_mask      = None
+    last_frame   = None
+
+    # ── TEK GEÇİŞ: ileri yönde tara, son 30 karede öğrenmeyi dondur ──────────
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_fr)
-    for _ in range(start_fr, end_fr + 1):
+    for frame_idx in range(start_fr, end_fr + 1):
         ret, fr = cap.read()
         if not ret:
             break
-        mog2.apply(fr)
+
         if sample_frame is None:
             sample_frame = fr.copy()
 
-    # Son karede sabit yabancı nesne maskesi al (learningRate=0 → artık öğrenme yok)
-    cap.set(cv2.CAP_PROP_POS_FRAMES, max(start_fr, end_fr - 30))
-    fg_mask    = None
-    last_frame = None
-    for _ in range(30):
-        ret, fr = cap.read()
-        if not ret:
-            break
-        fg = mog2.apply(fr, learningRate=0)
-        fg[fg == 127] = 0   # gölgeleri sıfırla
-        fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN,  k_open)
-        fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, k_close)
-        fg_mask    = fg
-        last_frame = fr.copy()
+        if frame_idx < freeze_fr:
+            # Arka plan modeli öğrenme aşaması
+            mog2.apply(fr)
+        else:
+            # Model donduruldu — sabit nesne maskesi al
+            fg = mog2.apply(fr, learningRate=0)
+            fg[fg == 127] = 0   # gölgeleri sıfırla
+            fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN,  k_open)
+            fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, k_close)
+            fg_mask    = fg
+            last_frame = fr.copy()
 
     cap.release()
 
@@ -252,13 +275,15 @@ def _detect_contours(mask: np.ndarray,
 
 class PatchCoreScorer:
     """
-    Basit cosine-similarity tabanlı PatchCore puanlayıcı.
-    
-    Tam anomalib bağımlılığı olmadan çalışabilmesi için ResNet18 feature
-    extractor + memory bank (altın tur kareleri = normal) kullanır.
-    
-    Açı toleransı: ResNet18 embedding'i global spatial bilgiyi özetler,
-    bu yüzden ~40° açı farkında bile anlamlı benzerlik skoru üretir.
+    Spatial (Uzamsal) PatchCore Puanlayıcı — İP12 Düzeltmesi.
+
+    Eski yaklaşım: ResNet18'den [:-1] → 512x1x1 global embedding.
+    Sorun: Küçük anomaliler global ortalamada kayboluyor.
+
+    Yeni yaklaşım: ResNet18'den [:-2] → 512x7x7 = 49 spatial patch.
+    Her test patch'i için memory bank'teki en benzer referans patch bulunur.
+    Karenin anomali skoru = en kötü (en az benzer) patch'in skoru.
+    Bu, küçük yerel nesnelerin büyük resimde kaybolmasını engeller.
     """
 
     def __init__(self, backbone: str = "resnet18"):
@@ -268,8 +293,8 @@ class PatchCoreScorer:
 
         import torchvision.models as models
         m = models.resnet18(weights="IMAGENET1K_V1")
-        # Sınıflandırıcıyı çıkar, sadece özellik çıkarıcı olarak kullan
-        self.model = torch.nn.Sequential(*list(m.children())[:-1])
+        # [:-2]: AveragePool ÇIKARILDI → spatial harita (512 x 7 x 7) elde edilir
+        self.model = torch.nn.Sequential(*list(m.children())[:-2])
         self.model.eval()
         if torch.cuda.is_available():
             self.model = self.model.cuda()
@@ -280,9 +305,14 @@ class PatchCoreScorer:
             transforms.Normalize([0.485, 0.456, 0.406],
                                  [0.229, 0.224, 0.225]),
         ])
-        self.memory_bank: list[np.ndarray] = []   # normal özellik vektörleri
+        # memory_bank: list of (49, 512) arrays (her referans kare için 49 patch)
+        self.memory_bank: list[np.ndarray] = []
 
-    def _extract(self, img_bgr: np.ndarray) -> np.ndarray | None:
+    def _extract_patches(self, img_bgr: np.ndarray) -> np.ndarray | None:
+        """
+        Bir görüntüden 49 adet 512-boyutlu L2-normalize patch vektörü çıkar.
+        Döndürür: (49, 512) array
+        """
         if self.model is None:
             return None
         rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
@@ -291,36 +321,63 @@ class PatchCoreScorer:
         if torch.cuda.is_available():
             t = t.cuda()
         with torch.no_grad():
-            feat = self.model(t).squeeze().cpu().numpy()
-        return feat / (np.linalg.norm(feat) + 1e-8)   # L2 normalize
+            # feat: (1, 512, 7, 7)
+            feat = self.model(t).squeeze(0).cpu().numpy()  # (512, 7, 7)
+        # (512, 7, 7) → (49, 512)
+        C, H, W = feat.shape
+        patches = feat.reshape(C, H * W).T          # (49, 512)
+        # Her patch'i ayrı ayrı L2-normalize et
+        norms   = np.linalg.norm(patches, axis=1, keepdims=True) + 1e-8
+        patches = patches / norms
+        return patches
 
     def fit_normal(self, ref_frames: list[np.ndarray]):
-        """Altın tur kareleriyle memory bank'i doldur."""
+        """
+        Altın tur kareleriyle memory bank'i doldur.
+        Her kare 49 patch üretir → memory_bank: N*49 satır.
+        """
         self.memory_bank = []
         for fr in ref_frames:
-            feat = self._extract(fr)
-            if feat is not None:
-                self.memory_bank.append(feat)
-        print(f"  [PatchCore] Memory bank: {len(self.memory_bank)} referans vektör")
+            patches = self._extract_patches(fr)
+            if patches is not None:
+                self.memory_bank.append(patches)     # her biri (49, 512)
+        total_patches = sum(p.shape[0] for p in self.memory_bank)
+        print(f"  [PatchCore] Memory bank: {len(self.memory_bank)} referans kare "
+              f"-> {total_patches} patch vektoru")
 
     def score(self, test_frame: np.ndarray) -> float:
         """
-        Anomali skoru: 0.0 (tamamen normal) → 1.0 (tamamen anomali).
-        1 - max_cosine_similarity formülü kullanılır.
+        Spatial PatchCore anomali skoru: 0.0 (normal) -> 1.0 (anomali).
+
+        Algoritma:
+          1. Test karesinden 49 patch çıkar.
+          2. Her test patch'i için memory bank'teki tüm referans patch'lere
+             cosine benzerlik hesapla → en yüksek benzerliği (nearest neighbor) al.
+          3. Her patch için anomali_i = 1 - max_sim_i
+          4. Karenin anomali skoru = max(anomali_i) — en kötü patch kazanır.
         """
         if not self.memory_bank or self.model is None:
             return -1.0   # PatchCore devre dışı
 
-        feat = self._extract(test_frame)
-        if feat is None:
+        test_patches = self._extract_patches(test_frame)   # (49, 512)
+        if test_patches is None:
             return -1.0
 
-        sims = [float(np.dot(feat, ref)) for ref in self.memory_bank]
-        best_sim = max(sims)
-        # cosine benzerliği: 1.0 = aynı, 0.0 = dik, -1.0 = zıt
-        # Anomali skoru: yüksek benzerlik → düşük skor (normal)
-        anomali_score = 1.0 - best_sim
-        return round(float(anomali_score), 4)
+        # Tüm referans patch'leri tek matrise topla: (N_ref_patches, 512)
+        all_ref = np.vstack(self.memory_bank)   # (N*49, 512)
+
+        # Her test patch'i için en yakın referans benzerliğini bul.
+        # test_patches: (49, 512), all_ref: (N*49, 512)
+        # Matris çarpımı → (49, N*49) benzerlik matrisi
+        sim_matrix = test_patches @ all_ref.T   # (49, N*49)
+        max_sims   = sim_matrix.max(axis=1)     # (49,) — her patch için en iyi benzerlik
+
+        # Patch-level anomali skorları
+        patch_scores = 1.0 - max_sims           # (49,)
+
+        # Karenin genel skoru: en kötü (en anomali) patch
+        anomali_score = float(patch_scores.max())
+        return round(anomali_score, 4)
 
 
 # Tek global skorlayıcı (waypoint'ler arasında paylaşılır)
