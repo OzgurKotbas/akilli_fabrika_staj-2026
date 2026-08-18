@@ -465,3 +465,145 @@ Peki bu problemi nasıl çözdük? Yapılandırma dosyası (`config.yaml`) mant�
 Sistemdeki tüm "değişken" ve "kurulum bağımlı" parametreleri (dosya yolları, MQTT broker IP'si, algılayıcıların tolerans sınırları) koddan tamamen temizleyip merkezi bir `config.yaml` dosyasına taşıdık. 
 Ayrıca dosya yollarını bulmak için `Path(__file__).resolve().parent.parent` mantığını kurduk; yani program nerede çalışırsa çalışsın kendi kök dizinini otomatik bulup tüm yolları ona göre inşa edecek (relative path). 
 Artık programı kurduğumuz fabrikanın ağ yetkilisi koda hiç dokunmadan sadece `config.yaml` dosyasını açıp MQTT adresini değiştirdiğinde sistem sorunsuz çalışmaya başlayacak. Bu, yazılım mühendisliğinde projeyi "production-ready" (üretime hazır) yapan en temel standartlardan biridir.
+
+---
+
+## İP12 — Yanlış Alarm Ayarı / Ensemble Düzeltmeleri (18 Ağustos 2026)
+
+**User:**
+Anomali tespit kodu düzgün çalışıyor ama anomaliler düzgün tespit edilemiyor. Bunun için diğer arkadaşlarımdan almam gereken bilgiler var mı yoksa ip8 anomali tespit kodu tamamen bana mı bağlı?
+
+**AI:**
+Bu tamamen senin sorumluluk alanın — diğer ekip üyelerinden bağımsızsın. Sorun İP9 sonuçlarında zaten belgelenmişti: TP=1, FP=2, FN=2, F1=0.333. İki spesifik algoritma hatası tespit ettim:
+
+1. **MOG2 Sabit Zaman Bug'ı:** `mog2_detect()` içinde `cap.set(CAP_PROP_POS_FRAMES, ...)` ile video geriye sarılıyor. MOG2 bir zaman serisi modeli — videoyu geriye sarmak geçmiş kare bilgisini bozuyor. Sabit nesneler (engel) arka plan sayılıyor → False Negative.
+
+2. **PatchCore Global Embedding Hassasiyeti:** `ResNet18[:-1]` ile (512×1×1) tek global vektör üretiliyor. Küçük anomaliler (yerdeki şişe, kapı kolu) geniş duvar/koridor bilgisi içinde kayboluyor → False Negative.
+
+Her iki sorun da algoritmik ve tamamen bağımsız biçimde çözülebilir.
+
+---
+
+**User:**
+MOG2 tek geçiş mantığı tam olarak nasıl çalışıyor? cap.set() neden sorun?
+
+**AI:**
+MOG2 (`cv2.BackgroundSubtractorMOG2`) her `apply()` çağrısında hem mevcut kareyi arka plan modeline göre analiz eder hem de bu modeli günceller. Model "hangi pikselin arka plan olduğunu" geçmiş N kareye bakarak öğrenir (varsayılan `history=200`).
+
+**Eski kod sorunu:**
+```python
+# Önce ileriye git (öğren)
+for fr_idx in range(start_fr, end_fr):
+    cap.read() → mog2.apply(fr)
+# Şimdi geriye sar!
+cap.set(cv2.CAP_PROP_POS_FRAMES, end_fr - 30)
+# Son 30 kareyi dondurarak çalıştır
+for _ in range(30):
+    mog2.apply(fr, learningRate=0)
+```
+Problem: Geriye sarmadan sonra model, yanlış sırayla gördüğü karelere göre bozulmuş durumda. `learningRate=0` ile dondurduğunda modelin içi zaten bozuk.
+
+**Yeni kod (single-pass):**
+```python
+freeze_fr = max(start_fr, end_fr - 30)
+for frame_idx in range(start_fr, end_fr + 1):
+    ret, fr = cap.read()
+    if frame_idx < freeze_fr:
+        mog2.apply(fr)              # öğren
+    else:
+        fg = mog2.apply(fr, learningRate=0)  # dondur
+```
+Video baştan sona tek yönde ilerliyor. Son 30 kareye gelince model iyi öğrenilmiş haldeyken donduruldu → doğru sabit nesne maskesi.
+
+---
+
+**User:**
+PatchCore'da [:-1] yerine [:-2] kullanmak ne anlama geliyor? 49 patch nereden geliyor?
+
+**AI:**
+ResNet18 katman yapısı şöyle:
+
+```
+ResNet18:
+  Layer1, Layer2, Layer3, Layer4  → son conv bloklar
+  AdaptiveAvgPool2d               → [:-1] buraya kadar = (512, 1, 1)
+  Linear (FC)                     → çıkış sınıflandırıcı
+```
+
+`[:-1]` → AdaptiveAvgPool dahil → her görüntü için (512, 1, 1) → squeeze → tek 512-d vektör.
+`[:-2]` → AdaptiveAvgPool çıkarılıyor → her görüntü için (512, 7, 7) uzaysal harita çıkıyor.
+
+**7×7 = 49 patch nereden geliyor?**
+ResNet18'de 224×224 girdi, son konvolüsyon bloğundan çıkınca 7×7 uzaysal çözünürlüğe düşer (stride=32). Yani her piksel, orijinal görüntüdeki 32×32 piksellik bir bölgeyi temsil eder. Bu 49 bölgenin her biri bağımsız 512-d vektördür.
+
+**Anomali skoru:**
+```python
+# Her test patch'i için memory bank'teki en yakın patch bulunur
+sim_matrix = test_patches @ all_ref.T   # (49, N*49)
+max_sims = sim_matrix.max(axis=1)       # en iyi benzerlik per patch
+patch_scores = 1.0 - max_sims           # anomali skoru per patch
+anomali_score = patch_scores.max()      # EN KÖTÜ patch karar verir
+```
+Küçük anomali artık kaybolmuyor — kendi patch'inde yüksek skor alıyor.
+
+---
+
+**User:**
+F1=0.333'ten F1=0.667'ye çıktı. WP01 neden hâlâ FP sayılıyor?
+
+**AI:**
+WP01 sonucu: MOG2 3 nesne buldu (is_alert=True), GT anomali var → tespit doğru. Ama `tp_fp` hesabında:
+
+```json
+"tp_fp": { "tp": 0, "fp": 1, "fn": 1, "iou_best": 0.094 }
+```
+
+**Neden FP?** IoU eşiği 0.30 olarak ayarlı. MOG2'nin bulduğu bounding box'lar ile GT bbox'ın örtüşmesi `IoU=0.094 < 0.30` — bu yüzden "buldu ama yanlış konumda" sayılıyor (FP+FN).
+
+**WP01 fiziksel durumu:** Su şişesi (N1) + çöp kovası (N2) iki ayrı nesne ve GT bbox bunların birleşik kutusunu kapsıyor. MOG2'nin bulduğu contour'lar görüntünün farklı bölgelerinde dağılmış, tek büyük kutuda yeterli örtüşme sağlanamıyor.
+
+Bu, FP değil konumlandırma hassasiyeti sorunudur. Gerçek tespiti başarılı — IoU eşiğini 0.20'ye düşürmek bu WP01'i TP yapabilir. Şimdilik 0.30 korundu.
+
+---
+
+## İP13 — PDF Rapor Üretici (18 Ağustos 2026)
+
+**User:**
+PDF üretmek için fpdf2 mi weasyprint mi kullanmalıyım?
+
+**AI:**
+İkisi de geçerli ama farklı senaryolar için:
+
+| Kriter | fpdf2 | WeasyPrint |
+|---|---|---|
+| Kurulum | `pip install fpdf2` (saf Python) | Sistem bağımlılıkları gerekiyor (GTK, Pango) |
+| Windows uyumu | ✅ Mükemmel | ⚠️ Sorunlu olabilir |
+| HTML/CSS → PDF | ❌ Yok | ✅ Tam CSS desteği |
+| Türkçe karakter | Helvetica ile Latin-1 → dikkat | UTF-8 tam destek |
+| Proje için öneri | **Birincil** (hafif, bağımsız) | Yedek |
+
+Proje için `fpdf2` birincil backend olarak seçildi. Windows geliştirme ortamında sistem bağımlılığı olmadan çalışıyor. `WeasyPrint` fallback olarak kodda mevcut ama şu anda kurulu değil.
+
+---
+
+**User:**
+fpdf2 ile Türkçe karakterlerde UnicodeEncodeError alıyorum, nasıl çözülür?
+
+**AI:**
+`fpdf2`'de built-in `Helvetica` gibi core fontlar Latin-1 (ISO 8859-1) kodlaması kullanır. Türkçe'ye özgü `ş, ğ, ü, ö, ç, ı` harfleri Latin-1'de yok.
+
+**Çözüm stratejisi:**
+1. Print string'lerindeki Türkçe karakterleri ASCII karşılıklarıyla değiştir:
+   ```python
+   metin = (metin.replace("İ","I").replace("ı","i")
+                 .replace("ğ","g").replace("Ğ","G")
+                 .replace("ü","u").replace("Ü","U")
+                 .replace("ş","s").replace("Ş","S")
+                 .replace("ç","c").replace("Ç","C")
+                 .replace("ö","o").replace("Ö","O"))
+   ```
+2. `—` (em dash) gibi Unicode karakterlerden kaçın — bunlar Latin-1'de yok.
+3. Alternatif: TTF font yükle (`pdf.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)`) ve Türkçe karakterleri tam destekle.
+
+Proje için PDF başlıkları ASCII-safe tutuldu, içerik Türkçe yazıldı (terminalde UTF-8 destekleniyor).
+

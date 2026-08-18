@@ -59,7 +59,7 @@ Proje 16 iş paketine bölünmüştür (İP15 = LingBot-Map stretch). Her iş pa
 ## İlerleme Takibi
 | İş paketi | Durum | Tarih | Not |
 |:---:|:---:|---|-----|
-| İP1 | ⬜ | | |
+| İP1 | ✅ | 02.08.2026 | anomalib kuruldu, MVTec-AD'de model çalıştırıldı ve heatmap alındı. İP5 kapsamında çok daha detaylı (PatchCore+PaDiM F1/AUROC) yapıldı. Kanıt: outputs/ip6_heatmap.png + outputs/model_results/ip5_patchcore_padim/rapor.md |
 | İP2 | ✅ | 10.08.2026 | 7 senaryo öncelik sıralı: S1-S3 test edildi, S4-S7 ileriki aşama. docs/senaryolar.md oluşturuldu. |
 | İP3 | ✅ | 10.08.2026 | altin_tur_v2.mp4 çekildi, PLY haritası Lingbot-Map (1034 frame limiti aşılarak) Kaggle'da üretildi, Drive'a yüklendi. |
 | İP4 | ✅ | 10.08.2026 | 10 makale özet tablosu: docs/literatur_ozet.md ve docs/proje_tanimi/literatur_ozeti.md |
@@ -70,8 +70,8 @@ Proje 16 iş paketine bölünmüştür (İP15 = LingBot-Map stretch). Her iş pa
 | İP9 | ✅ | 15.08.2026 | Ensemble scripti çalıştırıldı. TP=1, FP=2, FN=2 (F1=0.333) ölçüldü. MOG2 sabit zaman bug'ı ve PatchCore global embedding hassasiyeti analiz edilip loglandı. |
 | İP10 | ✅ | 17.08.2026 | `scripts/ip10_mqtt_yayini.py` oluşturuldu. paho-mqtt ile `patrol/alert` yayını yapıldı (çevrimdışı kayıt da destekli). JSON formatı ve şema uyumluluğu eklendi. |
 | İP11 | ✅ | 17.08.2026 | `scripts/ip11_rapor_uret.py` ve `docs/rapor_sablonu.md.j2` oluşturuldu. Jinja2 ile devriye raporları (MD ve HTML) başarıyla üretildi. |
-| İP12 | ⬜ | | |
-| İP13 | ⬜ | | |
+| İP12 | ✅ | 18.08.2026 | **Alarm/tur öncesi/sonrası ölçümü:** F1=0.333 → F1=0.667 (+%100). Düzeltme 1: MOG2 cap.set() geri sarma kaldırıldı → tek geçiş, son 30 kare learningRate=0 (FP=2→1, FN=2→1). Düzeltme 2: PatchCore [:-1] global (512x1) → [:-2] spatial (512x7x7, 49 patch), max anomali patch karar veriyor. WP03 kapı anomalisi PatchCore 0.515>0.40 ile ek kanıt. Eşik=0.40 seçildi. Detay: docs/ip12_oncesi_sonrasi_olcum.md |
+| İP13 | ✅ | 18.08.2026 | scripts/comms/ip13_pdf_rapor.py oluşturuldu. fpdf2 (saf Python) backend: kapak + özet + öncelik sıralı uyarılar (HIGH→MEDIUM→LOW, görüntü kanıtlı) + normal WP tablosu + metrikler + mimari detay. outputs/devriye_raporu/son_devriye_raporu.pdf üretildi. |
 | İP14 | ⬜ | | |
 | İP15 | ⬜ | | (stretch — atlanabilir) |
 | İP16 | ⬜ | | |

@@ -332,3 +332,52 @@ Sistemi sabit değerli (hardcoded) zamanlamadan kurtarıp, zaman damgalarını d
 - [x] Son kullanıcı için tüm çalıştırma komutlarını içeren detaylı `KULLANIM_KILAVUZU.md` rehberi oluşturuldu. Artık sistemi sıfırdan kuracak biri bile adımları kolayca takip edebilir.
 
 
+
+### 📅 18 Ağustos 2026 (Salı)
+
+**Aktif İş Paketleri:** İP12 (Yanlış Alarm Ayarı) · İP13 (PDF Rapor)
+
+**Bugün yapılanlar:**
+
+- [x] **İP12 — MOG2 Sabit Zaman Bug'ı Düzeltildi (`scripts/vision/ip9_ensemble_analiz.py`)**
+  - **Sorun:** `mog2_detect()` fonksiyonu `cap.set(CAP_PROP_POS_FRAMES, ...)` ile videoyu geriye sarıyordu. MOG2, zaman sırasına bağlı bir arka plan modeli kullandığından bu işlem modeli bozuyor ve sabit nesneleri arka plan saymasına yol açıyordu → False Negative.
+  - **Düzeltme:** `cap.set()` çağrısı tamamen kaldırıldı. Video tek geçişte (single-pass) `start_fr`'den `end_fr`'e kadar ileri yönde taranıyor. Son 30 kare için `learningRate=0` uygulanarak model donduruldu → sabit yabancı nesneler ön plan olarak kalıyor.
+  - **Etki:** FP=2 → FP=1, FN=2 → FN=1
+
+- [x] **İP12 — PatchCore Global Embedding Hassasiyeti Düzeltildi**
+  - **Sorun:** `PatchCoreScorer`, `ResNet18[:-1]` kullanarak (512×1×1) tek global vektör üretiyordu. Küçük anomaliler (zemin nesnesi, kapı kolu) bu vektörde geniş duvar/koridor bilgisine karşı kayboluyordu → False Negative.
+  - **Düzeltme:** `ResNet18[:-2]` kullanılarak (512×7×7) uzaysal özellik haritası elde edildi. Her görüntüden 49 uzaysal patch vektörü çıkarıldı. Memory bank'te her patch için nearest-neighbor aranarak en kötü (yüksek anomali) patch skoru karar değeri olarak seçildi.
+  - **Memory bank:** 3 referans kare × 49 patch = 147 patch vektörü
+
+- [x] **İP12 — Öncesi / Sonrası Ölçümü Yapıldı (Bitti Kriteri)**
+  - Yeni kod `ip9_ensemble_analiz.py` ile çalıştırıldı; sonuçlar:
+
+  | Metrik | **ÖNCE** (15.08) | **SONRA — MOG2** | **SONRA — MOG2+PC** |
+  |---|:---:|:---:|:---:|
+  | F1 | 0.333 | **0.667** | **0.667** |
+  | TP | 1 | 2 | 2 |
+  | FP | 2 | 1 | 1 |
+  | FN | 2 | 1 | 1 |
+
+  - **+%100 F1 iyileşmesi** elde edildi.
+  - WP03 kapı anomalisi: PatchCore skoru 0.515 > 0.40 eşiği → MOG2'ye ek bağımsız kanıt.
+  - Detay: `docs/ip12_oncesi_sonrasi_olcum.md`
+
+- [x] **İP13 — PDF Rapor Üretici Oluşturuldu (`scripts/comms/ip13_pdf_rapor.py`)**
+  - `fpdf2` kütüphanesi birincil backend; `WeasyPrint` yedek.
+  - Kapak sayfası, özet metrikler, öncelik sıralı uyarı kartları (HIGH→MEDIUM→LOW, görüntü kanıtlı), normal WP tablosu, ensemble mimari detayı.
+  - PDF üretildi: `outputs/devriye_raporu/son_devriye_raporu.pdf`
+
+- [x] **İP1 Takip Tablosu Düzeltildi**
+  - İP1 takip tablosunda ⬜ kalmıştı. Kanıtlar incelenerek ✅ olarak güncellendi.
+  - Kanıt: `outputs/ip6_heatmap.png` (kendi verisiyle heatmap) + İP5 MVTec raporu (PatchCore AUROC=1.0).
+
+- [x] **`docs/ip12_oncesi_sonrasi_olcum.md`** — Öncesi/sonrası detaylı karşılaştırma belgesi oluşturuldu.
+- [x] **`DOKUMANLAR/Ozgur_is_paketleri.md`** — İP1, İP12, İP13 takip tablosu gerçek ölçüm notlarıyla güncellendi.
+- [x] `AI.md` güncellendi — bugünün teknik sohbeti eklendi.
+
+**Sonuç:** İP12 bitti kriteri (alarm/tur ölçümü — öncesi/sonrası) fiilen karşılandı. PDF raporlama (İP13) tamamlandı. İP1–İP13 arası tüm iş paketleri tamamlanmış durumda.
+
+**Sıradaki Adım:** İP14 — Pan-tilt kamerayla canlı waypoint turu, uçtan uca demo.
+
+---
