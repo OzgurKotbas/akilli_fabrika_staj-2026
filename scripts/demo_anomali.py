@@ -65,6 +65,7 @@ import numpy as np
 import sys
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from scripts.core import config_okuyucu
+from scripts.core.anomali_motor import AlgilayiciMOG2, build_yellow_mask
 
 # ──────────────────────────────────────────────────────────────────────────────
 # PROJE YOLLARI
@@ -152,14 +153,6 @@ def letterbox(frame: np.ndarray, w: int, h: int) -> np.ndarray:
     canvas[y0:y0+nh, x0:x0+nw] = small
     return canvas
 
-
-def build_yellow_mask(img_bgr: np.ndarray) -> np.ndarray:
-    hsv  = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv, PARAMS["yellow_lower"], PARAMS["yellow_upper"])
-    k    = cv2.getStructuringElement(
-        cv2.MORPH_RECT, (PARAMS["yellow_dilate"], PARAMS["yellow_dilate"])
-    )
-    return cv2.dilate(mask, k, iterations=1)
 
 
 def draw_header(canvas: np.ndarray, title: str, fps: float,
@@ -387,74 +380,6 @@ class AlgilayiciIP8:
         objs.sort(key=lambda o: o["area"], reverse=True)
         return objs
 
-
-class AlgilayiciMOG2:
-    """
-    İP9 mantığı: MOG2 arka plan çıkarma — video akışı üzerinde çalışır.
-    ip9_ensemble_analiz.py DEĞİŞTİRİLMEZ — bu bağımsız sarmalayıcıdır.
-    """
-
-    def __init__(self):
-        self.mog2 = cv2.createBackgroundSubtractorMOG2(
-            history=200,
-            varThreshold=PARAMS["mog2_thresh"],
-            detectShadows=True,
-        )
-        self._k_open  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-        self._k_close = cv2.getStructuringElement(
-            cv2.MORPH_ELLIPSE,
-            (PARAMS["morph_kernel"], PARAMS["morph_kernel"]))
-
-    def isle(self, frame: np.ndarray) -> dict:
-        """
-        Tek kare → MOG2 anomali kararı.
-        Döndürür: {is_alert, nesneler, fg_mask, fg_ratio}
-        """
-        fg = self.mog2.apply(frame)
-        fg[fg == 127] = 0    # gölge pikselleri sıfırla
-        fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN,  self._k_open)
-        fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, self._k_close)
-
-        yellow = build_yellow_mask(frame)
-        if fg.shape != yellow.shape:
-            yellow = cv2.resize(yellow, (fg.shape[1], fg.shape[0]))
-        fg[yellow > 0] = 0
-
-        fg_ratio = float(np.sum(fg > 0)) / fg.size
-        nesneler = self._detect(fg, yellow)
-        is_alert = len(nesneler) > 0
-
-        return {
-            "is_alert" : is_alert,
-            "nesneler" : nesneler,
-            "fg_mask"  : fg,
-            "fg_ratio" : round(fg_ratio, 4),
-        }
-
-    def _detect(self, mask: np.ndarray, yellow_mask: np.ndarray) -> list:
-        h, w     = mask.shape
-        img_area = h * w
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
-                                        cv2.CHAIN_APPROX_SIMPLE)
-        objs = []
-        for cnt in contours:
-            if cv2.contourArea(cnt) < PARAMS["mog2_min_area"]:
-                continue
-            x, y, bw, bh = cv2.boundingRect(cnt)
-            if bw * bh > img_area * 0.40:
-                continue
-            cx, cy = x + bw // 2, y + bh // 2
-            try:
-                if yellow_mask[cy, cx] > 0:
-                    continue
-            except IndexError:
-                pass
-            objs.append({"x": int(x), "y": int(y),
-                          "w": int(bw), "h": int(bh),
-                          "area": int(bw * bh),
-                          "cx": int(cx), "cy": int(cy)})
-        objs.sort(key=lambda o: o["area"], reverse=True)
-        return objs
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -845,15 +770,23 @@ def run_mod_b():
             nesneler = sonuc["nesneler"]
             is_alert = sonuc["is_alert"]
 
-            # Simüle patchcore skoru (MOG2 oranından türet)
-            pc_score = min(1.0, fg_ratio * 15.0 + len(nesneler) * 0.15)
+            # EMA skor stabilizasyonu
+            raw_score = min(1.0, fg_ratio * 15.0 + len(nesneler) * 0.15)
+            if not score_hist:
+                pc_score = raw_score
+            else:
+                pc_score = 0.7 * score_hist[-1] + 0.3 * raw_score
             score_hist.append(pc_score)
+
             frame_no += 1
             if is_alert:
                 toplam_uyari += 1
 
             severity = "HIGH" if len(nesneler) >= 2 else \
                        "MEDIUM" if len(nesneler) == 1 else "NONE"
+                       
+            is_rotation = sonuc.get("is_rotation", False)
+            flow_mag = sonuc.get("flow_mag", 0.0)
 
             current_frame = frame
             cur_sonuc     = sonuc
@@ -863,6 +796,8 @@ def run_mod_b():
             cur_is_alert  = is_alert
             cur_pc_score  = pc_score
             cur_severity  = severity
+            cur_is_rotation = is_rotation
+            cur_flow_mag = flow_mag
         # (duraklatıldığında son değerleri koru)
 
         # Paneller
@@ -890,6 +825,10 @@ def run_mod_b():
         put(p4, f"Video: {ENGEL_VIDEO.name}", (8, 70),
             scale=0.38, color=C["subtext"])
 
+        mod_label = "MOD B: Video Akışı"
+        if cur_is_rotation:
+            mod_label += f" [DÖNÜYOR - Uyarı Bastırıldı (Flow: {cur_flow_mag:.1f})]"
+
         cv2_frame = compose(
             p1, p2, p3, p4,
             score_hist,
@@ -898,7 +837,7 @@ def run_mod_b():
                 fps      = fps_disp,
                 is_alert = cur_is_alert,
                 severity = cur_severity,
-                mod_label= "MOD B: Video Akışı",
+                mod_label= mod_label,
             ),
             footer_kw=dict(
                 mog2_cnt     = len(cur_nesneler),

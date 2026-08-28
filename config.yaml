@@ -22,6 +22,12 @@ vision:
   yellow_hsv_upper: [38, 255, 255]
   yellow_dilate_px: 12
 
+  # FP Düzeltme Ayarları (demo_anomali v2)
+  tavan_crop_oran: 0.18
+  rotation_flow_thresh: 3.5
+  mog2_lr_drift_reset: 0.08
+  mog2_warmup_n: 40
+
 paths:
   # Proje kök dizinine (ROOT) göre göreceli yollar
   waypoints_yaml: "data/waypoints/waypoint_listesi.yaml"
