@@ -381,3 +381,41 @@ Sistemi sabit değerli (hardcoded) zamanlamadan kurtarıp, zaman damgalarını d
 **Sıradaki Adım:** İP14 — Pan-tilt kamerayla canlı waypoint turu, uçtan uca demo.
 
 ---
+---
+
+### 📅 01 Eylül 2026 (Salı)
+
+**Aktif İş Paketleri:** İP14 (tamamlama + hata düzeltmesi) · İP15 (başlangıç)
+
+**Bugün yapılanlar:**
+
+- [x] **İP14 v1 Tamamlandı ve Çalıştırıldı:**
+  - `scripts/ip14_canli_tur.py` oluşturuldu: `engel.mp4` video kaynağından WP01/WP02/WP03 sırayla ziyaret → MOG2 analiz → İP10 MQTT yayını → İP13 PDF üretimi.
+  - Script tamamen çalıştı, MQTT offline audit JSON'a kaydedildi, PDF üretildi.
+
+- [x] **WP03 Hatası Tespit Edildi ve Düzeltildi (İP14 v2):**
+  - **Hata:** v1'de WP03 `is_alert=False` çıkıyordu (yanlış negatif). WP01 ve WP02 doğruydu.
+  - **Kök Neden:** MOG2 warmup'u `engel.mp4`'ün ilgili bölümünden (17-22s) yapılıyordu. `engel.mp4`'te engel tüm video boyunca mevcut olduğundan MOG2, engeli "arka plan" olarak öğrendi → test karesinde engeli görmezden geldi.
+  - **Düzeltme (v2):** Warmup kaynağı video'dan referans kare'ye (altın tur — engelsiz normal sahne) alındı. Statik görüntü modu için MOG2 yerine SSIM + morfoloji tabanlı fark analizi eklendi (İP8 mantığı).
+  - **Sonuç:** WP01=⚠HIGH, WP02=⚠HIGH, WP03=⚠HIGH — 3/3 doğru tespit.
+
+- [x] **Evrensel Kaynak Adaptörü Eklendi (`KaynakAdaptoru`):**
+  - Kod artık her türlü görüntü kaynağıyla çalışıyor:
+    - `--kaynak data/raw_videos/engel.mp4` (video dosyası)
+    - `--kaynak rtsp://192.168.1.10/stream` (IP kamera/RTSP)
+    - `--kaynak 0` (webcam)
+    - `--kaynak data/ip8_test/WP01_degisik.jpg` (statik görüntü)
+  - Bu değişiklik sayesinde sistem gerçek pan-tilt kameraya bağlandığında kod değişikliği gerekmeyecek.
+
+- [x] **AI.md Güncellendi:** 2 yeni Q&A eklendi:
+  1. "Eski videolar yeterli mi?" → simülasyon modu yeterliliği
+  2. "WP03 neden yanlış?" → MOG2 warmup hatası ve v2 düzeltmesi
+
+- [x] **İP15 Başlandı:** `scripts/ip15_harita_konumlandir.py` yazılıyor (LingBot-Map 3D haritaya uyarı konumlandırma).
+
+**Teknik not — WP03 neden v1'de yanlıştı:**
+> `engel.mp4` gerçek bir "canlı" akış değil; engel video'nun başından sonuna kadar sahnede mevcut. v1'de MOG2'yi bu video bölümünden ısıttığımızda, MOG2 "hep bu sahne böyleymiş, engel arka plandır" diye öğreniyor. İP12'deki tek-geçiş (single-pass) düzeltmesi video içi sabit nesne tespiti için geçerliydi; farklı kaynak + referans karşılaştırması için ise referans kare warmup gerekiyor.
+
+**Sıradaki Adım:** İP15 — LingBot-Map 3D harita + waypoint konumlandırma. İP16 — final demo hazırlığı.
+
+---

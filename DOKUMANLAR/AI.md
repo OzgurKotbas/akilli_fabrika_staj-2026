@@ -607,3 +607,51 @@ fpdf2 ile Türkçe karakterlerde UnicodeEncodeError alıyorum, nasıl çözülü
 
 Proje için PDF başlıkları ASCII-safe tutuldu, içerik Türkçe yazıldı (terminalde UTF-8 destekleniyor).
 
+---
+
+## İP14 — Canlı Tur Simülasyonu (01 Eylül 2026)
+
+**User:**
+İP14 için daha önce çektiğim altın tur ve engel videolarını kullansam yeterli olur mu, yoksa yeni bir şey çekmem gerekiyor mu?
+
+**AI:**
+Evet, mevcut videolar İP14 için yeterli. İP14'ün bitti kriteri "uçtan uca canlı demo" — devriye → uyarı → rapor zincirinin çalıştığını kanıtlamak. İP14 dokümantasyonundaki not tam olarak bu durumu karşılıyor:
+
+> *"Pan-tilt kamera mevcut değilse simülasyon modu: WP videosundan kare oku, anomali tespiti yap, MQTT yayınla."*
+
+`engel.mp4` ve `WP*_degisik.jpg` görüntülerini kullanarak tüm zinciri simüle edebiliriz. Gerçek kamera bağlantısı olmadan da sistemin çalıştığını kanıtlamak staj değerlendirmesi için yeterlidir. İstersen `--kaynak rtsp://...` ile gerçek kameraya geçiş de `KaynakAdaptoru` sayesinde kod değişikliği gerektirmeden yapılır.
+
+---
+
+**User:**
+WP03 çıktıları hatalı çıkıyor, is_alert=False geliyor ama uyarı vermesi lazım. WP01 ve WP02 doğru. Neden bu hata oluştu ve nasıl düzelttik?
+
+**AI:**
+Bu çok tipik bir MOG2 öğrenme hatası. Kök neden şu:
+
+**v1'deki yanlış warmup stratejisi:**
+```
+engel.mp4: |--Engel VAR--|--Engel VAR--|--Engel VAR--|
+            0s           10s           20s           30s
+                          ^ warmup WP03 ^ test WP03
+                          (17-22s)        (25s)
+```
+
+MOG2, warmup sırasında (17-22s) engeli "arka plan" olarak öğreniyor. Test karesinde (25s) aynı engeli görünce "bu zaten normal, arka plan" diye değerlendiriyor → `is_alert=False`. WP01 ve WP02'de bu sorun görünmüyor çünkü onların warmup bölgelerinde engel daha zayıf.
+
+**v2 düzeltmesi — iki katmanlı çözüm:**
+1. **MOG2 warmup kaynağı değiştirildi:** Video'dan değil, referans kare (altın tur) üzerinden yapılıyor. Böylece MOG2 sadece "engelsiz, normal" sahneyi öğreniyor. Bu yaklaşım RTSP/webcam/video tüm kaynaklar için de geçerli → **evrensel**.
+2. **Statik görüntü modu için SSIM analizi eklendi:** MOG2 zaman serisi modelidir, tek kare karşılaştırmasına uygun değil. `WP*_degisik.jpg` gibi statik görüntüler için SSIM + morfoloji tabanlı fark analizi kullanıldı (İP8 mantığı).
+
+**Sonuç:** WP01=⚠HIGH, WP02=⚠HIGH, WP03=⚠HIGH — 3/3 doğru tespit elde edildi.
+
+```python
+# Yanlış (v1): Video'dan warmup → engel öğreniliyor
+# BUG: MOG2 engeli "normal arka plan" sanıyor
+warmup_kare = video.kare_al(saniye=17)  # engel bu karede de var!
+
+# Doğru (v2): Referans kareden warmup → sadece normal durum
+algilayici.warmup(ref_bgr, n=40)  # FIX: sadece altın tur karesi
+```
+
+---
