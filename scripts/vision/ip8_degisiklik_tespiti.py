@@ -35,6 +35,7 @@ from skimage.metrics import structural_similarity as ssim
 import sys
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from scripts.core import config_okuyucu
+from scripts.core.kaynak_adaptoru import KaynakAdaptoru
 
 # ─── Proje Ayarları ───────────────────────────────────────────────────────────
 PROJECT_DIR  = config_okuyucu.PROJECT_ROOT
@@ -314,26 +315,37 @@ def draw_result(ref_bgr: np.ndarray, test_bgr: np.ndarray,
     return np.vstack([title_bar, grid])
 
 
-def process_pair(wp_id: str, ref_path: str, test_path: str,
+def process_pair(wp_id: str, ref_img: str | np.ndarray, test_img: str | np.ndarray,
                  degisiklik_tipi: str = "bilinmiyor",
                  aciklama: str = "") -> dict:
     """
     Bir referans-test çifti için tam analiz pipline'ı çalıştır.
+    ref_img ve test_img string (dosya yolu) veya doğrudan cv2 matrisi olabilir.
     Döndürür: sonuç sözlüğü (JSON'a yazılır)
     """
+    ref_path_str = str(ref_img) if isinstance(ref_img, (str, Path)) else "canli_akis"
+    test_path_str = str(test_img) if isinstance(test_img, (str, Path)) else "canli_akis"
+    
     print(f"\n{'='*55}")
     print(f"  Waypoint: {wp_id}")
-    print(f"  Referans: {ref_path}")
-    print(f"  Test    : {test_path}")
+    print(f"  Referans: {ref_path_str}")
+    print(f"  Test    : {test_path_str}")
     print(f"{'='*55}")
 
-    ref_bgr  = cv2.imread(str(ref_path))
-    test_bgr = cv2.imread(str(test_path))
+    if isinstance(ref_img, (str, Path)):
+        ref_bgr = cv2.imread(str(ref_img))
+    else:
+        ref_bgr = ref_img.copy()
+        
+    if isinstance(test_img, (str, Path)):
+        test_bgr = cv2.imread(str(test_img))
+    else:
+        test_bgr = test_img.copy()
 
     if ref_bgr is None:
-        raise FileNotFoundError(f"Referans okunamadı: {ref_path}")
+        raise FileNotFoundError(f"Referans okunamadı: {ref_path_str}")
     if test_bgr is None:
-        raise FileNotFoundError(f"Test okunamadı: {test_path}")
+        raise FileNotFoundError(f"Test okunamadı: {test_path_str}")
 
     # Boyutları eşitle (farklı çözünürlük varsa)
     h, w = ref_bgr.shape[:2]
@@ -385,8 +397,8 @@ def process_pair(wp_id: str, ref_path: str, test_path: str,
 
     return {
         "waypoint_id":     wp_id,
-        "referans":        str(ref_path),
-        "test":            str(test_path),
+        "referans":        ref_path_str,
+        "test":            test_path_str,
         "degisiklik_tipi": degisiklik_tipi,
         "aciklama":        aciklama,
         "is_alert":        is_alert,
@@ -442,6 +454,31 @@ def run_batch(etiket_path: str):
     print(f"  [->] Sonuclar: {RESULTS_PATH}")
     print(f"{'='*55}")
 
+def run_live(wp_id: str, ref_path: str, kaynak_yolu: str):
+    """Canlı akıştan (RTSP/Webcam) sürekli okuyarak analiz yapar."""
+    adaptor = KaynakAdaptoru(kaynak_yolu)
+    
+    print(f"\n[IP8] Canlı Akış Modu Başlıyor...")
+    print(f"Kaynak: {kaynak_yolu}")
+    print("Çıkmak için 'q' tuşuna basın.")
+    
+    while True:
+        ret, frame = adaptor.oku()
+        if not ret:
+            break
+            
+        result = process_pair(wp_id, ref_path, frame)
+        
+        vis = cv2.imread(result["gorseli_path"])
+        if vis is not None:
+            cv2.imshow("IP8 Canli Akis Analizi", vis)
+            
+        if cv2.waitKey(100) & 0xFF == ord('q'):
+            break
+            
+    adaptor.release()
+    cv2.destroyAllWindows()
+
 
 def tune_yellow_mask(img_path: str):
     """
@@ -479,6 +516,8 @@ if __name__ == "__main__":
     parser.add_argument("--wp",    default="WP01")
     parser.add_argument("--batch", action="store_true",
                         help="data/ip8_test/etiketler.json üzerinden tüm çiftleri işle")
+    parser.add_argument("--live", action="store_true",
+                        help="Canlı akış modunda sürekli test et")
     parser.add_argument("--tune",  metavar="IMG_PATH",
                         help="Sarı maske HSV sınırlarını debug et")
     args = parser.parse_args()
@@ -493,5 +532,7 @@ if __name__ == "__main__":
             print("       Bkz: DOKUMANLAR/Ozgur_is_paketleri.md -> IP8")
         else:
             run_batch(str(etiket))
+    elif args.live:
+        run_live(args.wp, args.ref, args.test)
     else:
         run_single(args.wp, args.ref, args.test)

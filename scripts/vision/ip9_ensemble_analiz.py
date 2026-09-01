@@ -63,10 +63,10 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 
-# Config okuyucu modülünü import et (scripts dizininde olduğumuz için aynı hiyerarşi)
 import sys
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from scripts.core import config_okuyucu
+from scripts.core.kaynak_adaptoru import KaynakAdaptoru
 
 # PatchCore için anomalib (opsiyonel — yoksa sadece MOG2 çalışır)
 try:
@@ -163,71 +163,91 @@ def build_yellow_mask(img_bgr: np.ndarray) -> np.ndarray:
 # KATMAN 1 — MOG2 ARKA PLAN ÇIKARMA (açı-bağımsız)
 # =============================================================================
 
-def mog2_detect(engel_video: str,
-                ref_second: float,
-                window_s: float = MOG2_WINDOW_S
+def mog2_detect(kaynak_yolu: str | int | Path,
+                ref_second: float | None = None,
+                window_s: float = MOG2_WINDOW_S,
+                warmup_frame: np.ndarray | None = None
                 ) -> tuple:
     """
-    Engel videosunu kendi içinde analiz eder.
-    Referans videoyla KIYASLAMA YAPILMAZ — bu yüzden açıya bağımsız.
-
-    İP12 DÜZELTMESİ — Tek Geçiş (Single-Pass):
-    Eski kodda son 30 kare için cap.set() ile videoda geriye atlanıyordu.
-    MOG2 geçmiş tabanlı olduğundan zamanda geriye atmak modeli bozar.
-    Çözüm: Baştan sona TEK GEÇİŞ. Son 30 kareye gelindiğinde
-    learningRate=0 yapılarak model dondurulur ve maske o karelerden alınır.
-
-    Döndürür: (sample_frame, fg_mask, fg_ratio, nesne_listesi)
+    Engel videosunu kendi içinde analiz eder veya canlı akıştan kare okur.
+    
+    Canlı akış (ref_second=None):
+      warmup_frame kullanılarak MOG2 arka planı öğrenir, ardından kaynaktan
+      window_s saniye kadar kare okuyup tespiti yapar.
     """
-    cap = cv2.VideoCapture(str(engel_video))
-    if not cap.isOpened():
-        return None, np.zeros((480, 640), np.uint8), 0.0, []
-
-    fps      = cap.get(cv2.CAP_PROP_FPS)
-    total_fr = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    total_s  = total_fr / fps if fps > 0 else 0
-
-    start_s  = max(0, min(ref_second - window_s / 2, total_s - window_s))
-    end_s    = min(total_s, start_s + window_s)
-    start_fr = int(start_s * fps)
-    end_fr   = int(end_s   * fps)
-    # Son 30 kare: model dondurulacak; en az 30 kare bırak
-    freeze_fr = max(start_fr, end_fr - 30)
-
+    adaptor = KaynakAdaptoru(kaynak_yolu)
+    
+    # ── MOG2 BAŞLATMA ──────────────────────────────────────────────────────────
     mog2 = cv2.createBackgroundSubtractorMOG2(
         history=MOG2_HISTORY, varThreshold=MOG2_THRESH, detectShadows=True
     )
-
     k_open  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     k_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (MORPH_KERNEL, MORPH_KERNEL))
 
     sample_frame = None
     fg_mask      = None
     last_frame   = None
-
-    # ── TEK GEÇİŞ: ileri yönde tara, son 30 karede öğrenmeyi dondur ──────────
-    cap.set(cv2.CAP_PROP_POS_FRAMES, start_fr)
-    for frame_idx in range(start_fr, end_fr + 1):
-        ret, fr = cap.read()
-        if not ret:
-            break
-
-        if sample_frame is None:
-            sample_frame = fr.copy()
-
-        if frame_idx < freeze_fr:
-            # Arka plan modeli öğrenme aşaması
-            mog2.apply(fr)
-        else:
-            # Model donduruldu — sabit nesne maskesi al
+    
+    # ── CANLI AKIŞ MODU ────────────────────────────────────────────────────────
+    if ref_second is None or adaptor.tip in ["kamera", "stream"]:
+        if warmup_frame is not None:
+            # Warmup: Referans kareyi 40 kez MOG2'ye besle
+            for _ in range(40):
+                mog2.apply(warmup_frame, learningRate=1.0)
+                
+        # 30 kare (yaklaşık 1 saniye) test için oku
+        for _ in range(30):
+            ret, fr = adaptor.oku()
+            if not ret:
+                break
+            if sample_frame is None:
+                sample_frame = fr.copy()
+            
             fg = mog2.apply(fr, learningRate=0)
-            fg[fg == 127] = 0   # gölgeleri sıfırla
-            fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN,  k_open)
+            fg[fg == 127] = 0
+            fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, k_open)
             fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, k_close)
-            fg_mask    = fg
+            fg_mask = fg
             last_frame = fr.copy()
+            
+        adaptor.release()
+    # ── VİDEO MODU ──────────────────────────────────────────────────────────────
+    else:
+        if adaptor.cap is None:
+            adaptor.release()
+            return None, np.zeros((480, 640), np.uint8), 0.0, []
+            
+        cap = adaptor.cap
+        fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+        total_fr = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        total_s  = total_fr / fps if fps > 0 else 0
 
-    cap.release()
+        start_s  = max(0, min(ref_second - window_s / 2, total_s - window_s))
+        end_s    = min(total_s, start_s + window_s)
+        start_fr = int(start_s * fps)
+        end_fr   = int(end_s   * fps)
+        freeze_fr = max(start_fr, end_fr - 30)
+
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start_fr)
+        for frame_idx in range(start_fr, end_fr + 1):
+            ret, fr = cap.read()
+            if not ret:
+                break
+
+            if sample_frame is None:
+                sample_frame = fr.copy()
+
+            if frame_idx < freeze_fr:
+                mog2.apply(fr)
+            else:
+                fg = mog2.apply(fr, learningRate=0)
+                fg[fg == 127] = 0
+                fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, k_open)
+                fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, k_close)
+                fg_mask    = fg
+                last_frame = fr.copy()
+        
+        adaptor.release()
 
     if fg_mask is None or last_frame is None:
         return sample_frame, np.zeros((480, 640), np.uint8), 0.0, []
@@ -506,7 +526,9 @@ def process_waypoint_ensemble(pair: dict,
     # ── KATMAN 1: MOG2 ────────────────────────────────────────────────────────
     print("  [MOG2] Arka plan çıkarma başlıyor...")
     engel_last, fg_mask, fg_ratio, mog2_nesneler = mog2_detect(
-        str(engel_video), ref_second=ref_second
+        kaynak_yolu=str(engel_video), 
+        ref_second=ref_second,
+        warmup_frame=ref_bgr
     )
     print(f"  [MOG2] fg_ratio={fg_ratio:.4f}  |  {len(mog2_nesneler)} nesne")
 
@@ -756,8 +778,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="İP9: MOG2 + PatchCore Ensemble Anomali Tespiti"
     )
-    parser.add_argument("--engel",          default=str(ENGEL_VIDEO),
-                        help="Engel videosu yolu")
+    parser.add_argument("--kaynak",         default=str(ENGEL_VIDEO),
+                        help="Engel videosu, RTSP veya webcam (0, 1) yolu")
     parser.add_argument("--etiketler",      default=str(ETIKET_PATH),
                         help="etiketler.json yolu (İP8 GT verisi)")
     parser.add_argument("--outdir",         default=str(OUT_DIR),
@@ -771,7 +793,7 @@ if __name__ == "__main__":
     PATCHCORE_THRESH = args.patchcore_thresh
 
     run_ensemble(
-        engel_video   = args.engel,
+        engel_video   = args.kaynak,
         etiket_path   = Path(args.etiketler),
         out_dir       = Path(args.outdir),
         use_patchcore = not args.no_patchcore,

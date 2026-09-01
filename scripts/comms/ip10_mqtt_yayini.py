@@ -52,6 +52,7 @@ import json
 import os
 import sys
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -83,8 +84,8 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 _mqtt_conf   = CONFIG.get("mqtt", {})
 MQTT_BROKER  = _mqtt_conf.get("broker", "localhost")
 MQTT_PORT    = _mqtt_conf.get("port", 1883)
-MQTT_TOPIC   = _mqtt_conf.get("topic", "patrol/alert")
-MQTT_CLIENT_ID = "anomali_modul_ozgur"
+MQTT_TOPIC_BASE = _mqtt_conf.get("topic_base", "patrol/alert")
+MQTT_CLIENT_PREFIX = _mqtt_conf.get("client_id_prefix", "anomali_modul")
 MQTT_QOS     = 1
 MQTT_RETAIN  = False
 
@@ -199,48 +200,36 @@ class PatrolMQTTYayinci:
     patrol/alert MQTT yayıncısı.
     paho-mqtt yoksa veya broker bağlantısı kurulamazsa offline mod devreye girer.
     """
-
     def __init__(self, broker: str = MQTT_BROKER, port: int = MQTT_PORT,
-                 offline: bool = False):
-        self.broker  = broker
-        self.port    = port
-        self.offline = offline or not MQTT_AVAILABLE
-        self._client = None
-        self._bagli  = False
+                 topic: str | None = None, offline_mod: bool = False,
+                 deployment_id: str = "default"):
+        self.broker = broker
+        self.port = port
+        self.offline = offline_mod
+        self.deployment_id = deployment_id
+        
+        # Topic: patrol/alert/fabrika_a_hat_1
+        self.topic = topic if topic else f"{MQTT_TOPIC_BASE}/{self.deployment_id}"
+        
+        # Client ID: anomali_modul_fabrika_a_hat_1_a1b2c3d4
+        self.client_id = f"{MQTT_CLIENT_PREFIX}_{self.deployment_id}_{uuid.uuid4().hex[:8]}"
+
+        self.client = None
         self._gonderilen: list[dict] = []
+        if not self.offline and MQTT_AVAILABLE:
+            self._baglan()
 
-        if not self.offline:
-            self._baglanti_kur()
-
-    def _baglanti_kur(self):
-        """Broker'a bağlan."""
+    def _baglan(self):
         try:
-            self._client = mqtt.Client(client_id=MQTT_CLIENT_ID,
-                                       protocol=mqtt.MQTTv311)
-            self._client.on_connect    = self._on_connect
-            self._client.on_disconnect = self._on_disconnect
-            self._client.on_publish    = self._on_publish
-            self._client.connect(self.broker, self.port, keepalive=60)
-            self._client.loop_start()
-            time.sleep(0.5)   # bağlantının oturması için kısa bekle
+            self.client = mqtt.Client(client_id=self.client_id)
+            self.client.connect(self.broker, self.port, 60)
+            self.client.loop_start()
+            print(f"  [MQTT] Baglanildi: {self.broker}:{self.port} (ID: {self.client_id})")
         except Exception as e:
             print(f"  [UYARI] Broker bağlantısı kurulamadı ({self.broker}:{self.port}): {e}")
             print("  [BİLGİ] Offline moda geçiliyor — mesajlar JSON'a kaydedilecek.")
             self.offline = True
-            self._client = None
-
-    def _on_connect(self, client, userdata, flags, rc):
-        if rc == 0:
-            self._bagli = True
-            print(f"  [MQTT] Broker'a bağlandı: {self.broker}:{self.port}")
-        else:
-            print(f"  [MQTT] Bağlantı başarısız (rc={rc})")
-
-    def _on_disconnect(self, client, userdata, rc):
-        self._bagli = False
-
-    def _on_publish(self, client, userdata, mid):
-        pass   # sessiz kabul
+            self.client = None
 
     def yayinla(self, mesaj: dict) -> bool:
         """
@@ -251,17 +240,12 @@ class PatrolMQTTYayinci:
         self._gonderilen.append(mesaj)
         payload = json.dumps(mesaj, ensure_ascii=False, indent=None)
 
-        if self.offline or self._client is None:
+        if self.offline or self.client is None:
             # Offline: sadece ekrana bas
             self._offline_yazdir(mesaj)
             return True
 
-        if not self._bagli:
-            print("  [UYARI] Broker bağlantısı yok — offline olarak kaydediliyor.")
-            self._offline_yazdir(mesaj)
-            return False
-
-        result = self._client.publish(MQTT_TOPIC, payload, qos=MQTT_QOS,
+        result = self.client.publish(self.topic, payload, qos=MQTT_QOS,
                                        retain=MQTT_RETAIN)
         return result.rc == mqtt.MQTT_ERR_SUCCESS
 
@@ -272,7 +256,7 @@ class PatrolMQTTYayinci:
         alr = mesaj.get("is_alert", False)
 
         sembol = "[HIGH]" if sev == "HIGH" else "[MED]" if sev == "MEDIUM" else "[OK]"
-        print(f"  [OFFLINE] {sembol} Topic: {MQTT_TOPIC}")
+        print(f"  [OFFLINE] {sembol} Topic: {self.topic}")
         print(f"           Waypoint: {wp}  |  Severity: {sev}  |  Alert: {alr}")
         print(f"           Score: {mesaj.get('score', -1):.3f}  "
               f"DetCount: {mesaj.get('det_count', 0)}")
@@ -287,7 +271,7 @@ class PatrolMQTTYayinci:
             "broker"      : self.broker,
             "port"        : self.port,
             "offline"     : self.offline,
-            "topic"       : MQTT_TOPIC,
+            "topic"       : self.topic,
             "mesaj_sayisi": len(self._gonderilen),
             "mesajlar"    : self._gonderilen,
         }
@@ -296,9 +280,9 @@ class PatrolMQTTYayinci:
         return out_path
 
     def kapat(self):
-        if self._client is not None:
-            self._client.loop_stop()
-            self._client.disconnect()
+        if self.client is not None:
+            self.client.loop_stop()
+            self.client.disconnect()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -324,7 +308,7 @@ def ip9_ciktilari_yayinla(yayinci: PatrolMQTTYayinci) -> list[dict]:
         return []
 
     print(f"\n  Toplam {len(mesajlar)} waypoint mesajı yayınlanıyor...")
-    print(f"  Topic: {MQTT_TOPIC}\n")
+    print(f"  Topic: {yayinci.topic}\n")
 
     basarili = 0
     for mesaj in mesajlar:
@@ -401,18 +385,16 @@ def test_mesaji_gonder(yayinci: PatrolMQTTYayinci):
 # GİRİŞ NOKTASI
 # ──────────────────────────────────────────────────────────────────────────────
 
-def main():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="İP10: patrol/alert MQTT Yayıncısı"
+        description="İP10: MQTT Yayını — ensemble sonuçlarını yayınlar"
     )
-    parser.add_argument("--broker",  default=MQTT_BROKER,
-                        help=f"MQTT broker adresi (varsayılan: {MQTT_BROKER})")
-    parser.add_argument("--port",    type=int, default=MQTT_PORT,
-                        help=f"MQTT port (varsayılan: {MQTT_PORT})")
-    parser.add_argument("--offline", action="store_true",
-                        help="Broker olmadan JSON'a yaz")
-    parser.add_argument("--izle",    action="store_true",
-                        help="Canlı izleme modu (ip9 çıktıları değişince yayınla)")
+    parser.add_argument("--broker",   default=MQTT_BROKER, help="MQTT Broker IP")
+    parser.add_argument("--port",     type=int, default=MQTT_PORT, help="MQTT Port")
+    parser.add_argument("--offline",  action="store_true", help="Broker'sız mod (sadece JSON)")
+    parser.add_argument("--izle",     action="store_true", help="Canlı izleme modu")
+    parser.add_argument("--deployment-id", default=CONFIG.get("deployment", {}).get("default_id", "default"),
+                        help="Deployment ID (topic ve client id için)")
     parser.add_argument("--aralik",  type=float, default=5.0,
                         help="İzleme modu kontrol aralığı (saniye)")
     parser.add_argument("--test",    action="store_true",
@@ -424,15 +406,18 @@ def main():
     print("  Grup 03_Gama · BTU · Staj 2026")
     print("=" * 60)
     print(f"  Broker : {args.broker}:{args.port}")
-    print(f"  Topic  : {MQTT_TOPIC}")
+    print(f"  Deployment: {args.deployment_id}")
     print(f"  Mod    : {'OFFLINE' if args.offline else 'CANLI'}")
     print("=" * 60)
 
     yayinci = PatrolMQTTYayinci(
         broker  = args.broker,
         port    = args.port,
-        offline = args.offline,
+        offline_mod = args.offline,
+        deployment_id = args.deployment_id
     )
+
+    print(f"  Topic  : {yayinci.topic}")
 
     try:
         if args.test:
@@ -449,7 +434,3 @@ def main():
     finally:
         yayinci.kapat()
         print("\nIP10 tamamlandi.")
-
-
-if __name__ == "__main__":
-    main()

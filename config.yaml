@@ -1,10 +1,14 @@
 # Akıllı Fabrika — Pan-Tilt Robot Projesi
 # Anomali Tespiti Modülü Ortak Yapılandırma Dosyası
 
+deployment:
+  default_id: "default"
+  
 mqtt:
-  broker: "localhost"
+  broker: "${MQTT_BROKER:-localhost}"
   port: 1883
-  topic: "patrol/alert"
+  topic_base: "${MQTT_TOPIC_BASE:-patrol/alert}"
+  client_id_prefix: "anomali_modul"
 
 vision:
   # PatchCore Ayarları

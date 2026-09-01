@@ -419,3 +419,33 @@ Sistemi sabit değerli (hardcoded) zamanlamadan kurtarıp, zaman damgalarını d
 **Sıradaki Adım:** İP15 — LingBot-Map 3D harita + waypoint konumlandırma. İP16 — final demo hazırlığı.
 
 ---
+
+### 📅 02 Eylül 2026 (Çarşamba)
+
+**Aktif İş Paketleri:** İP14-İP15 (Endüstriyel Kod Evrenselleştirmesi ve Refactoring)
+
+**Bugün yapılanlar:**
+
+- [x] **Kodların Evrenselleştirilmesi:**
+  - Tüm projeyi (özel olarak `ip8_degisiklik_tespiti.py`, `ip9_ensemble_analiz.py`, `ip14_canli_tur.py`) sadece belirli bir video dosyasından kurtararak genel amaçlı hale getirdik.
+  - Merkezi `scripts/core/kaynak_adaptoru.py` sınıfı oluşturularak her tür kaynak (IP Kamera/RTSP, Webcam, MP4 Video, Sabit Görseller) sisteme tam uyumlu hale getirildi.
+  - **Neden bu yapı seçildi?** Endüstriyel sahada (gerçek fabrikada) sistemin lokal bir mp4 okuması beklenemez. Sürekli bir RTSP kamera yayınına veya edge cihazdaki USB kameraya bağlanabilmesi (Plug-and-Play) ve kaynak değiştiğinde ana analiz kodlarının bozulmaması için "Adaptör Tasarım Deseni" (Adapter Pattern) tercih edildi.
+  - **Delil/Kanıt:** Terminal üzerinde `python scripts/ip14_canli_tur.py --kaynak 0` komutuyla bilgisayar kamerası üzerinden, ve `--kaynak data/raw_videos/engel.mp4` ile dosya üzerinden aynı anomali tespit motorunun sorunsuz çalıştığı test edilip doğrulandı.
+
+- [x] **Multi-Deployment (Çoklu Hat/Fabrika) Desteği:**
+  - Endüstride tek kodun birden fazla hesap veya hat ile çakışmadan çalışabilmesi için `deployment-id` mimarisi kuruldu.
+  - `config.yaml` içine deployment ve prefix yapıları eklendi. `scripts/core/config_okuyucu.py` güncellenerek ortam değişkenleri (`os.environ` ve `.env`) desteklenir hale getirildi.
+  - `ip10_mqtt_yayini.py` artık `deployment-id` kullanarak dinamik ve eşsiz topic'ler ile yayın yapıyor.
+  - **Neden bu yapı seçildi?** Birden fazla hat (veya farklı fabrikalar) aynı MQTT sunucusuna (broker) bağlanırsa, herkesin aynı `patrol/alert` konusuna (topic) yazması verilerin birbirine karışmasına (collision) neden olur. Ayrıca aynı diske (outputs klasörüne) kayıt yapan farklı süreçler birbirinin dosyasının üzerine yazar.
+  - **Delil/Kanıt:** `--deployment-id fabrika_b_hat_1` komutu çalıştırıldığında; MQTT yayınlarının `[OFFLINE] [OK] Topic: patrol/alert/fabrika_b_hat_1` kanalına başarıyla yönlendirildiği, ve logların/çıktıların izole bir biçimde `outputs/fabrika_b_hat_1/` klasörü altına kaydedildiği konsol çıktılarıyla tescillendi.
+  
+- [x] **Canlı Akış (Live Stream) Adaptasyonu:**
+  - `ip9` içindeki MOG2 tespiti `cap.set()` ve kare sayma zorunluluklarından temizlenerek sürekli kare basan gerçek zamanlı kameralarla tam çalışacak şekilde refactor edildi.
+  - **Neden bu yapı seçildi?** MOG2 modeli geçmiş karelere (history) bağlı öğrenen bir modeldir. Eski kod, videoda belli bir saniyeye atlamak için `cap.set(cv2.CAP_PROP_POS_FRAMES, ...)` komutunu kullanıyordu. Canlı bir RTSP kamera akışında veya web kamerasında zamanı geriye / ileriye sarmak (seek) teknik olarak mümkün değildir; akış tek yönlüdür.
+  - **Delil/Kanıt:** Canlı mod (ref_second=None) tetiklendiğinde sistemin hata verip çökmediği, aksine doğrudan anlık referans kareden MOG2'yi ısıtıp (warmup yapıp) kaynaktan gelen sıradaki ilk N kareyi okuyarak anomali tespiti yapabildiği kanıtlandı. Hata veren seek işlemleri by-pass edildi.
+
+- [x] **Doğrulama ve Çıktılar:**
+  - Kodlar başarıyla test edildi (Webcam testleri, statik testler ve `--deployment-id` bayraklı konsol testleri).
+  - Değişiklikler ve CLI test komutları kullanıcının bilgisine sunuldu, `task.md` ve `walkthrough.md` başarıyla oluşturuldu.
+
+**Sıradaki Adım:** Demo planı (İP16) ile YOLO/Levha Okuma (takım modülleri) entegrasyonu üzerine konuşulması ve demoya hazırlık.

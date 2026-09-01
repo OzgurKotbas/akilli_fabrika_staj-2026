@@ -55,6 +55,8 @@ import numpy as np
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from scripts.core import config_okuyucu
 from scripts.core.anomali_motor import AlgilayiciMOG2, build_yellow_mask
+from scripts.core.kaynak_adaptoru import KaynakAdaptoru
+from scripts.comms.ip10_mqtt_yayini import PatrolMQTTYayinci
 
 # ──────────────────────────────────────────────────────────────────────────────
 # PROJE YOLLARI
@@ -108,103 +110,7 @@ SEVERITY_MAP = {
 
 MOG2_WARMUP_N = _vis_conf.get("mog2_warmup_n", 40)
 
-# ──────────────────────────────────────────────────────────────────────────────
-# EVRENSEL KAYNAK ADAPTORU
-# ──────────────────────────────────────────────────────────────────────────────
-
-class KaynakAdaptoru:
-    """
-    Her türlü görüntü kaynağını tek arayüzle sarmalar.
-    Desteklenen kaynaklar:
-      - Video dosyası  : "data/raw_videos/engel.mp4"
-      - RTSP stream    : "rtsp://192.168.1.10:554/stream"
-      - HTTP stream    : "http://cam.example.com/stream.mjpg"
-      - Webcam indeks  : 0, 1, 2  (int)
-      - Statik görüntü : "data/ip8_test/WP01_degisik.jpg"
-    """
-
-    def __init__(self, kaynak: str | int | Path):
-        self.kaynak     = kaynak
-        self._cap       = None
-        self._statik    = None   # Statik görüntü modu
-        self._is_video  = False
-        self._acik      = False
-        self._fps       = 25.0
-        self._toplam_fr = 0
-
-    def ac(self) -> bool:
-        """Kaynağı aç. Başarı durumunda True döner."""
-        kaynak = self.kaynak
-
-        # Tamsayı → webcam
-        if isinstance(kaynak, int):
-            self._cap      = cv2.VideoCapture(kaynak)
-            self._is_video = True
-        else:
-            kaynak = str(kaynak)
-            # Statik görüntü mü?
-            if Path(kaynak).exists() and kaynak.lower().endswith(
-                    ('.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp')):
-                img = cv2.imread(kaynak)
-                if img is not None:
-                    self._statik   = img
-                    self._is_video = False
-                    self._acik     = True
-                    print(f"  [KaynakAdaptoru] Statik görüntü: {Path(kaynak).name}")
-                    return True
-                return False
-            # Video dosyası veya stream
-            self._cap      = cv2.VideoCapture(kaynak)
-            self._is_video = True
-
-        if self._cap and self._cap.isOpened():
-            self._fps       = self._cap.get(cv2.CAP_PROP_FPS) or 25.0
-            self._toplam_fr = int(self._cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            self._acik      = True
-            tip = "Stream" if str(kaynak).startswith(("rtsp","http")) else \
-                  "Webcam" if isinstance(self.kaynak, int) else "Video"
-            print(f"  [KaynakAdaptoru] {tip}: {kaynak}  "
-                  f"FPS={self._fps:.1f}  "
-                  f"{'sonsuz' if self._toplam_fr <= 0 else str(self._toplam_fr)+' kare'}")
-            return True
-
-        print(f"  [HATA] Kaynak açılamadı: {kaynak}")
-        return False
-
-    @property
-    def acik(self) -> bool:
-        return self._acik
-
-    @property
-    def fps(self) -> float:
-        return self._fps
-
-    def kare_al(self, saniye: float | None = None) -> np.ndarray | None:
-        """
-        Kaynaktan kare al.
-        saniye: Video modunda belirtilen saniyeye git. None → bir sonraki kare.
-        Statik modda her zaman aynı görüntü döner (saniye yok sayılır).
-        """
-        if self._statik is not None:
-            return self._statik.copy()
-
-        if self._cap is None or not self._cap.isOpened():
-            return None
-
-        if saniye is not None and self._toplam_fr > 0:
-            kare_no = int(saniye * self._fps)
-            kare_no = max(0, min(kare_no, self._toplam_fr - 1))
-            self._cap.set(cv2.CAP_PROP_POS_FRAMES, kare_no)
-
-        ret, frame = self._cap.read()
-        return frame if ret else None
-
-    def kapat(self):
-        if self._cap:
-            self._cap.release()
-            self._cap = None
-        self._acik  = False
-        self._statik = None
+# KaynakAdaptoru artık scripts.core.kaynak_adaptoru içerisinden kullanılıyor
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -246,24 +152,20 @@ class WaypointAnalizci:
           v2: warmup sadece referans kare → is_alert=True (DOĞRU)
         """
         algilayici = AlgilayiciMOG2()
-
-        # ── MOG2 Warmup: REFERANS KARE'den ──────────────────────────────────
         algilayici.warmup(ref_bgr, n=warmup_n)
 
-        test_frame = self.adaptoru.kare_al(saniye=test_saniye)
-        if test_frame is None:
-            print("    [UYARI] Test karesi alınamadı — referans kare kullanılıyor")
+        kare = self.adaptoru.kare_al(test_saniye)
+        if kare is None:
+            print(f"  [UYARI] Test karesi alinamadi (saniye={test_saniye})")
             test_frame = ref_bgr.copy()
+        else:
+            test_frame = kare
 
-        # ── Anomali Tespiti ──────────────────────────────────────────────────
-        # Statik görüntü modunda: SSIM tabanlı piksel fark analizi (İP8 mantığı)
-        # Video/stream modunda : MOG2 (ref warmup sonrası tek kare)
         if test_statik is not None:
             sonuc = self._ssim_analiz(ref_bgr, test_frame)
         else:
             sonuc = algilayici.isle(test_frame)
 
-        # ── Görsel Fark ──────────────────────────────────────────────────────
         diff_bgr = self._fark_gorseli(ref_bgr, test_frame, sonuc.get("fg_mask"))
 
         return {
@@ -277,11 +179,6 @@ class WaypointAnalizci:
         }
 
     def _ssim_analiz(self, ref_bgr: np.ndarray, test_bgr: np.ndarray) -> dict:
-        """
-        İP8 mantığı: SSIM tabanlı piksel fark analizi (statik görüntüler için).
-        MOG2'den farklı olarak tek kare çiftine uygulanabilir ve
-        her türlü kamera açısından alınmış görüntüde çalışır.
-        """
         try:
             from skimage.metrics import structural_similarity as ssim
             skimage_ok = True
@@ -309,7 +206,6 @@ class WaypointAnalizci:
 
         _, binary = cv2.threshold(diff, 40, 255, cv2.THRESH_BINARY)
 
-        # Sarı hat bölgelerini ve tavanı temizle
         yellow = build_yellow_mask(ref_bgr)
         binary[yellow > 0] = 0
         tavan = int(h * 0.18)
@@ -361,7 +257,6 @@ class WaypointAnalizci:
                 diff[fg_bgr[:, :, 0] > 0] = [0, 0, 200]
         return diff
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # UI YARDIMCI FONKSİYONLARI
 # ──────────────────────────────────────────────────────────────────────────────
@@ -373,7 +268,6 @@ def put(img, text, pos, scale=0.52, color=None, thickness=1, bold=False):
         cv2.putText(img, text, pos, font, scale, (0, 0, 0), thickness + 3, cv2.LINE_AA)
     cv2.putText(img, text, pos, font, scale, color, thickness, cv2.LINE_AA)
 
-
 def letterbox(frame: np.ndarray, w: int, h: int) -> np.ndarray:
     fh, fw  = frame.shape[:2]
     scale   = min(w / fw, h / fh)
@@ -384,16 +278,13 @@ def letterbox(frame: np.ndarray, w: int, h: int) -> np.ndarray:
     canvas[y0:y0+nh, x0:x0+nw] = small
     return canvas
 
-
 def compose_view(ref_bgr, test_bgr, fg_mask, diff_bgr,
                  nesneler, is_alert, score,
                  header_kw, footer_kw) -> np.ndarray:
-    # Panel 1: Referans
     p1 = letterbox(ref_bgr, PANEL_W, PANEL_H)
     cv2.rectangle(p1, (0, 0), (PANEL_W-1, PANEL_H-1), C["accent"], 1)
     put(p1, "[REFERANS] Altin Tur (Normal)", (8, 22), scale=0.48, color=C["accent"], thickness=2)
 
-    # Panel 2: Canlı
     p2 = letterbox(test_bgr, PANEL_W, PANEL_H)
     brenk = C["uyari"] if is_alert else C["normal"]
     btxt  = ">>> UYARI <<<" if is_alert else "Normal"
@@ -414,7 +305,6 @@ def compose_view(ref_bgr, test_bgr, fg_mask, diff_bgr,
         put(p2, f"#{i+1}", (int(obj["x"]*sx)+2, max(int(obj["y"]*sy)-4, 14)),
             scale=0.35, color=c)
 
-    # Panel 3: MOG2 FG Maske
     if fg_mask is not None:
         base3 = cv2.cvtColor(fg_mask, cv2.COLOR_GRAY2BGR) if fg_mask.ndim == 2 else fg_mask
         p3 = letterbox(base3, PANEL_W, PANEL_H)
@@ -424,7 +314,6 @@ def compose_view(ref_bgr, test_bgr, fg_mask, diff_bgr,
     put(p3, "Ref warmup'tan ogrenildi (v2)", (8, PANEL_H - 8), scale=0.34, color=C["freeze"])
     cv2.rectangle(p3, (0, 0), (PANEL_W-1, PANEL_H-1), C["header"], 1)
 
-    # Panel 4: Fark
     if diff_bgr is not None:
         p4 = letterbox(diff_bgr, PANEL_W, PANEL_H)
     else:
@@ -443,7 +332,6 @@ def compose_view(ref_bgr, test_bgr, fg_mask, diff_bgr,
     _draw_footer(canvas, **footer_kw)
     return canvas
 
-
 def _draw_header(canvas, wp_id, wp_konum, is_alert, severity, tur_adi, gecen_sure):
     h, w = canvas.shape[:2]
     cv2.rectangle(canvas, (0, 0), (w, HEADER_H), C["header"], -1)
@@ -459,7 +347,6 @@ def _draw_header(canvas, wp_id, wp_konum, is_alert, severity, tur_adi, gecen_sur
     put(canvas, durum_txt, (cx, 32), scale=0.6, color=durum_renk, thickness=2, bold=True)
     put(canvas, f"{int(gecen_sure)}s", (w - 90, 20), scale=0.42, color=C["subtext"])
     put(canvas, f"{wp_konum[:28]}", (w - 330, 42), scale=0.38, color=C["text"])
-
 
 def _draw_footer(canvas, wp_id, wp_idx, toplam_wp, uyari_sayisi, mog2_cnt, score, esik):
     h, w = canvas.shape[:2]
@@ -479,87 +366,36 @@ def _draw_footer(canvas, wp_id, wp_idx, toplam_wp, uyari_sayisi, mog2_cnt, score
         (w-130, y0+44), scale=0.44,
         color=C["uyari"] if uyari_sayisi > 0 else C["normal"])
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# MQTT YAYINCI
-# ──────────────────────────────────────────────────────────────────────────────
-
-def mqtt_yayinci_olustur(offline: bool):
-    try:
-        from scripts.comms.ip10_mqtt_yayini import PatrolMQTTYayinci
-        return PatrolMQTTYayinci(offline=offline)
-    except Exception as e:
-        print(f"  [UYARI] MQTT modülü yüklenemedi: {e}")
-        return None
-
-
-def waypoint_mesaji_olustur(wp_id, sonuc, degisiklik_tipi, kanit_yolu) -> dict:
-    nesneler = sonuc.get("nesneler", [])
-    severity = "NONE"
-    if sonuc["is_alert"]:
-        severity = SEVERITY_MAP.get(degisiklik_tipi, "MEDIUM")
-    score = min(1.0, sonuc.get("fg_ratio", 0.0) * 15.0 + len(nesneler) * 0.15)
-    return {
-        "type"            : "patrol_alert",
-        "severity"        : severity,
-        "waypoint"        : wp_id,
-        "score"           : round(score, 4),
-        "det_count"       : len(nesneler),
-        "fg_ratio"        : sonuc.get("fg_ratio", 0.0),
-        "is_alert"        : sonuc["is_alert"],
-        "img_ref"         : kanit_yolu,
-        "ts"              : datetime.now().isoformat(),
-        "degisiklik_tipi" : degisiklik_tipi,
-        "mog2_aktif"      : True,
-        "patchcore_aktif" : False,
-        "karar_aciklama"  : f"MOG2 (ref-warmup v2): {len(nesneler)} nesne (IP14 canli tur)",
-    }
-
-
 # ──────────────────────────────────────────────────────────────────────────────
 # PDF RAPORU
 # ──────────────────────────────────────────────────────────────────────────────
 
-def pdf_rapor_uret(tur_ozeti: dict, out_dir: Path) -> Path | None:
-    ip13_ozet = {
-        "tur"            : "ip14_canli_tur_v2_evrensel",
-        "tarih"          : datetime.now().isoformat(),
-        "engel_video"    : str(tur_ozeti.get("kaynak", "")),
-        "toplam_wp"      : tur_ozeti["toplam_wp"],
-        "uyari_sayisi"   : tur_ozeti["uyari_sayisi"],
-        "mimari"         : "IP14 v2 — MOG2 ref-warmup (evrensel kaynak)",
-        "patchcore_aktif": False,
-        "metrikler"      : tur_ozeti.get("metrikler", {
-            "TP": "-", "FP": "-", "FN": "-",
-            "precision": 0.0, "recall": 0.0, "F1": 0.0}),
-        "sonuclar"       : tur_ozeti["wp_sonuclari"],
-    }
-    ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
-    tmp_json = out_dir / f"ip14_tur_ozet_{ts}.json"
-    with open(tmp_json, "w", encoding="utf-8") as f:
-        json.dump(ip13_ozet, f, ensure_ascii=False, indent=2)
-    print(f"  [JSON] Tur özeti: {tmp_json}")
+def pdf_rapor_uret(ozet: dict, args: argparse.Namespace) -> Path | None:
+    tur_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    deployment_dir = PROJECT_DIR / "outputs" / args.deployment_id
+    deployment_dir.mkdir(parents=True, exist_ok=True)
+    
+    ozet_json = deployment_dir / f"ip14_tur_ozet_{tur_id}.json"
+    klasik_json = OUT_DIR / f"ip14_tur_ozet_{tur_id}.json"
+    
+    with open(klasik_json, "w", encoding="utf-8") as f:
+        json.dump(ozet, f, ensure_ascii=False, indent=2)
+        
+    shutil.copy2(str(klasik_json), str(ozet_json))
+    
+    print(f"\n[Kayıt] Tur özeti: {klasik_json}")
     try:
         from scripts.comms.ip13_pdf_rapor import pdf_uret
-        return pdf_uret(ozet_path=tmp_json, out_dir=RAPOR_DIR)
+        return pdf_uret(ozet_path=klasik_json, out_dir=RAPOR_DIR)
     except Exception as e:
         print(f"  [UYARI] PDF üretilemedi: {e}")
         return None
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # WAYPOINT LİSTESİ
 # ──────────────────────────────────────────────────────────────────────────────
 
 def waypoint_listesi_yukle() -> list[dict]:
-    """
-    etiketler.json'dan waypoint listesi yükle.
-    Her waypoint'te hem 'referans' (normal durum) hem 'degisik' (anomalili kare) alanı var.
-    
-    Kaynak modu seçimi (WaypointAnalizci tarafından yapılır):
-      - 'degisik' yolu varsa ve kaynak video değilse → statik test görüntüsü kullan
-      - Kaynak video/RTSP/webcam ise → video_saniye'deki kareyi al (canli)
-    """
     waypoints = []
     if ETIKET_PATH.exists():
         try:
@@ -603,262 +439,84 @@ def waypoint_listesi_yukle() -> list[dict]:
             })
     return waypoints
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # ANA DEVRIYE TURU (Evrensel v2)
 # ──────────────────────────────────────────────────────────────────────────────
 
-def canli_tur_calistir(kaynak_str: str | int,
-                       gorselsiz: bool = False,
-                       offline: bool = True,
-                       wp_bekleme: float = 3.0,
-                       warmup_n: int = MOG2_WARMUP_N) -> dict:
-    """
-    Uçtan uca canlı devriye turu — her türlü kaynak ile çalışır.
-    """
-    tur_baslangic = datetime.now()
-    print("\n" + "=" * 65)
-    print("  IP14 v2: CANLI DEVRIYE TURU (EVRENSEL KAYNAK)")
-    print(f"  Tarih/Saat : {tur_baslangic.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"  Kaynak     : {kaynak_str}")
-    print(f"  MOG2 Warmup: Referans kareden ({warmup_n} iterasyon) — v2 duzeltmesi")
-    print(f"  MQTT       : {'OFFLINE' if offline else 'CANLI'}")
-    print("=" * 65)
-
-    # Kaynak aç
-    adaptoru = KaynakAdaptoru(kaynak_str)
-    if not adaptoru.ac():
-        print(f"[HATA] Kaynak açılamadı: {kaynak_str}")
-        return {}
-
-    # Analizci & MQTT
-    analizci = WaypointAnalizci(adaptoru)
-    yayinci  = mqtt_yayinci_olustur(offline=offline)
-
-    # Waypoint'ler
-    waypoints = waypoint_listesi_yukle()
-    print(f"\n  {len(waypoints)} waypoint:")
-    for wp in waypoints:
-        ref_ok = "✓" if wp["ref_path"].exists() else "✗ (EKSIK)"
-        tip    = "video" if adaptoru._is_video else "stream/statik"
-        deg_ok = "✓" if (wp.get('deg_path') and Path(wp['deg_path']).exists()) else "(video/canli)"
-        print(f"    {wp['id']}: {wp['konum'][:28]}  ref={ref_ok}  test={deg_ok}")
-
-    # Pencere
-    pencere_adi = "IP14 v2 — CANLI DEVRIYE  |  Ozgur Kotbas"
-    if not gorselsiz:
-        cv2.namedWindow(pencere_adi, cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
-        cv2.resizeWindow(pencere_adi, PANEL_W * 2, PANEL_H * 2 + HEADER_H + FOOTER_H)
-
-    tur_adi      = tur_baslangic.strftime("Tur_%Y%m%d_%H%M")
-    wp_sonuclari = []
-    uyari_sayisi = 0
-    iptal        = False
-    duraklatildi = False
-
-    print(f"\n  Devriye başlıyor...\n")
-
-    for wp_idx, wp in enumerate(waypoints):
-        if iptal:
-            break
-
-        wp_id    = wp["id"]
-        konum    = wp["konum"]
-        ref_path = wp["ref_path"]
-        tip      = wp["degisiklik_tipi"]
-
-        print(f"\n  [{wp_idx+1}/{len(waypoints)}] {wp_id} — {konum}")
-
-        # Referans kare
-        if ref_path.exists():
-            ref_bgr = cv2.imread(str(ref_path))
-            if ref_bgr is None:
-                print(f"    [UYARI] Referans kare okunamadı: {ref_path}")
-                ref_bgr = np.full((480, 640, 3), (20, 60, 20), dtype=np.uint8)
-        else:
-            print(f"    [UYARI] Referans kare bulunamadı: {ref_path}")
-            ref_bgr = np.full((480, 640, 3), (20, 60, 20), dtype=np.uint8)
-            put(ref_bgr, f"REF EKSIK: {wp_id}", (20, 240),
-                scale=0.7, color=(0, 200, 50), thickness=2)
-
-        # Test karesi kaynağını belirle:
-        # Öncelik sırası:
-        #   1. 'deg_path' varsa ve kaynak statik/farklı bir video ise → deg_path'ten oku
-        #   2. Kaynak RTSP/webcam ise → bir sonraki canlı kare al (saniye yok say)
-        #   3. Kaynak video ve deg_path yok → video'nun video_saniye'sindeki kareyi al
-        deg_path      = wp.get("deg_path")
-        test_statik   = None
-        test_saniye   = None
-
-        if deg_path and Path(deg_path).exists():
-            # Statik test görüntüsü (en güvenilir — WP03 dahil doğru tespit)
-            test_statik = cv2.imread(str(deg_path))
-            mod_aciklama = f"statik test ({Path(deg_path).name})"
-        elif not adaptoru._is_video:
-            # RTSP/webcam → bir sonraki canlı kare
-            mod_aciklama = "canli stream karesi"
-        else:
-            # Video dosyası → belirtilen saniye
-            test_saniye  = wp["video_saniye"]
-            mod_aciklama = f"video @{test_saniye}s"
-
-        print(f"    MOG2 warmup: ref kareden ({warmup_n} iter)  test: {mod_aciklama}")
-        t0    = time.time()
-        sonuc = analizci.waypoint_isle(
-            ref_bgr      = ref_bgr,
-            test_saniye  = test_saniye,
-            test_statik  = test_statik,
-            warmup_n     = warmup_n,
-        )
-        print(f"    Analiz süresi: {time.time()-t0:.2f}s")
-
-        test_frame = sonuc.get("test_frame", ref_bgr)
-        nesneler   = sonuc.get("nesneler", [])
-        is_alert   = sonuc["is_alert"]
-        fg_ratio   = sonuc.get("fg_ratio", 0.0)
-        fg_mask    = sonuc.get("fg_mask")
-        diff_bgr   = sonuc.get("diff_bgr")
-
-        score    = min(1.0, fg_ratio * 15.0 + len(nesneler) * 0.15)
-        severity = SEVERITY_MAP.get(tip, "MEDIUM") if is_alert else "NONE"
-
-        # Çıktılar
-        sembol = "⚠" if is_alert else "✓"
-        print(f"    {sembol} is_alert={is_alert}  severity={severity}  "
-              f"MOG2={len(nesneler)} nesne  fg_ratio={fg_ratio:.4f}")
-
-        # Kanıt görsel
-        kanit_dosyasi  = OUT_DIR / f"{wp_id}_canli_kare.jpg"
-        gorsel_dosyasi = OUT_DIR / f"{wp_id}_ensemble.jpg"
-        if test_frame is not None:
-            cv2.imwrite(str(kanit_dosyasi), test_frame)
+class TurYonetici:
+    def __init__(self, args):
+        self.args = args
+        self.tur_id = datetime.now().strftime("%Y%m%d_%H%M")
+        
+        kaynak_yolu = getattr(self.args, "kaynak", ENGEL_VIDEO)
         try:
-            ref_lb   = letterbox(ref_bgr, 400, 320)
-            test_lb  = letterbox(test_frame, 400, 320)
-            birlesik = np.hstack([ref_lb, test_lb])
-            baslik   = np.full((40, birlesik.shape[1], 3), (30, 30, 50), dtype=np.uint8)
-            put(baslik, f"[{wp_id}] REF vs CANLI  is_alert={is_alert}  severity={severity}",
-                (10, 26), scale=0.55,
-                color=C["uyari"] if is_alert else C["normal"], thickness=2)
-            birlesik = np.vstack([baslik, birlesik])
-            cv2.imwrite(str(gorsel_dosyasi), birlesik)
-        except Exception:
-            gorsel_dosyasi = kanit_dosyasi
+            if str(kaynak_yolu).isdigit():
+                kaynak_yolu = int(kaynak_yolu)
+        except:
+            pass
 
-        if is_alert:
-            uyari_sayisi += 1
+        self.adaptoru = KaynakAdaptoru(kaynak_yolu)
+        if getattr(self.adaptoru, "cap", None) is None and getattr(self.adaptoru, "img", None) is None:
+            print(f"[HATA] Kaynak açılamadı: {kaynak_yolu}")
+            return
+            
+        print(f"Kaynak tipi: {self.adaptoru.tip}")
+        
+        deployment_id = getattr(self.args, "deployment_id", "default")
+        self.mqtt = PatrolMQTTYayinci(
+            broker=self.args.broker, 
+            port=self.args.port,
+            offline_mod=self.args.mqtt_offline,
+            deployment_id=deployment_id
+        )
+        self.analizci = WaypointAnalizci(self.adaptoru)
 
-        # MQTT
-        mesaj = waypoint_mesaji_olustur(wp_id, sonuc, tip, str(kanit_dosyasi))
-        if yayinci:
-            print(f"    MQTT → patrol/alert  [{severity}]")
-            yayinci.yayinla(mesaj)
-
-        # Sonuç kaydı
-        wp_sonuclari.append({
-            "waypoint_id"       : wp_id,
-            "degisiklik_tipi"   : tip,
-            "senaryo"           : wp.get("aciklama", ""),
-            "referans"          : str(ref_path),
-            "test"              : str(kanit_dosyasi),
-            "mog2_fg_ratio"     : round(fg_ratio, 4),
-            "mog2_nesne_sayisi" : len(nesneler),
-            "mog2_nesneler"     : nesneler,
-            "mog2_uyari"        : is_alert,
-            "patchcore_score"   : -1.0,
-            "patchcore_esik"    : 0.4,
-            "patchcore_uyari"   : False,
-            "patchcore_aktif"   : False,
-            "is_alert"          : is_alert,
-            "severity"          : severity,
-            "karar_aciklama"    : f"MOG2 (ref-warmup v2): {len(nesneler)} nesne",
-            "ensemble_gorseli"  : str(gorsel_dosyasi),
-            "ts"                : datetime.now().isoformat(),
-        })
-
-        # Görsel
-        if not gorselsiz:
-            t_start = time.time()
-            while True:
-                gecen = time.time() - t_start
-                if not duraklatildi and gecen >= wp_bekleme:
-                    break
-
-                frame_display = compose_view(
-                    ref_bgr    = ref_bgr,
-                    test_bgr   = test_frame,
-                    fg_mask    = fg_mask,
-                    diff_bgr   = diff_bgr,
-                    nesneler   = nesneler,
-                    is_alert   = is_alert,
-                    score      = score,
-                    header_kw  = dict(
-                        wp_id      = wp_id,
-                        wp_konum   = konum,
-                        is_alert   = is_alert,
-                        severity   = severity,
-                        tur_adi    = tur_adi,
-                        gecen_sure = (datetime.now() - tur_baslangic).total_seconds(),
-                    ),
-                    footer_kw  = dict(
-                        wp_id        = wp_id,
-                        wp_idx       = wp_idx,
-                        toplam_wp    = len(waypoints),
-                        uyari_sayisi = uyari_sayisi,
-                        mog2_cnt     = len(nesneler),
-                        score        = score,
-                        esik         = 0.40,
-                    ),
-                )
-
-                if duraklatildi:
-                    hd, wd = frame_display.shape[:2]
-                    put(frame_display, "|| DURAKLATI",
-                        (wd//2-80, hd//2), scale=1.0, color=C["accent"],
-                        thickness=3, bold=True)
-
-                if not duraklatildi:
-                    pct = min(gecen / wp_bekleme, 1.0)
-                    bw  = int(frame_display.shape[1] * pct)
-                    cv2.rectangle(frame_display, (0, HEADER_H-4), (bw, HEADER_H-1),
-                                  C["uyari"] if is_alert else C["normal"], -1)
-
-                cv2.imshow(pencere_adi, frame_display)
-                key = cv2.waitKey(40) & 0xFF
-                if key in (ord('q'), 27):
-                    iptal = True
-                    break
-                elif key == ord(' '):
-                    duraklatildi = not duraklatildi
-                elif key == ord('n'):
-                    break
-                elif key == ord('s'):
-                    ss = OUT_DIR / f"ekran_{wp_id}_{datetime.now().strftime('%H%M%S')}.png"
-                    cv2.imwrite(str(ss), frame_display)
-                    print(f"    [Kayıt] {ss}")
-
-    adaptoru.kapat()
-
-    if yayinci:
-        kayit_path = yayinci.tum_mesajlari_kaydet()
-        print(f"\n  MQTT Audit: {kayit_path}")
-        yayinci.kapat()
-
-    tur_bitis = datetime.now()
-    return {
-        "tur_adi"       : tur_adi,
-        "baslangic"     : tur_baslangic.isoformat(),
-        "bitis"         : tur_bitis.isoformat(),
-        "sure_saniye"   : round((tur_bitis - tur_baslangic).total_seconds(), 1),
-        "kaynak"        : str(kaynak_str),
-        "toplam_wp"     : len(waypoints),
-        "uyari_sayisi"  : uyari_sayisi,
-        "normal_sayisi" : len(waypoints) - uyari_sayisi,
-        "iptal"         : iptal,
-        "wp_sonuclari"  : wp_sonuclari,
-        "metrikler"     : {"TP":"-","FP":"-","FN":"-","precision":0.0,"recall":0.0,"F1":0.0},
-    }
-
+    def calistir(self):
+        tur_baslangic = datetime.now()
+        waypoints = waypoint_listesi_yukle()
+        wp_sonuclari = []
+        uyari_sayisi = 0
+        
+        for wp_idx, wp in enumerate(waypoints):
+            wp_id    = wp["id"]
+            ref_path = wp["ref_path"]
+            ref_bgr = cv2.imread(str(ref_path)) if ref_path.exists() else np.full((480, 640, 3), (20, 60, 20), dtype=np.uint8)
+            
+            deg_path      = wp.get("deg_path")
+            test_statik   = cv2.imread(str(deg_path)) if deg_path and Path(deg_path).exists() else None
+            test_saniye   = wp["video_saniye"] if test_statik is None and self.adaptoru._is_video else None
+            
+            sonuc = self.analizci.waypoint_isle(ref_bgr, test_saniye, test_statik, warmup_n=self.args.warmup)
+            is_alert = sonuc["is_alert"]
+            if is_alert: uyari_sayisi += 1
+            
+            kanit_dosyasi = OUT_DIR / f"{wp_id}_canli_kare.jpg"
+            cv2.imwrite(str(kanit_dosyasi), sonuc["test_frame"])
+            
+            self.mqtt.yayinla({
+                "type": "patrol_alert",
+                "waypoint": wp_id,
+                "is_alert": is_alert,
+                "ts": datetime.now().isoformat()
+            })
+            
+            wp_sonuclari.append({
+                "waypoint_id": wp_id, "is_alert": is_alert, 
+                "karar_aciklama": f"MOG2: {len(sonuc.get('nesneler', []))} nesne"
+            })
+            
+        if self.adaptoru: self.adaptoru.release()
+        if self.mqtt: self.mqtt.kapat()
+        
+        return {
+            "tur_adi": self.tur_id,
+            "sure_saniye": round((datetime.now() - tur_baslangic).total_seconds(), 1),
+            "toplam_wp": len(waypoints),
+            "uyari_sayisi": uyari_sayisi,
+            "normal_sayisi": len(waypoints) - uyari_sayisi,
+            "wp_sonuclari": wp_sonuclari,
+            "kaynak": str(self.args.kaynak)
+        }
 
 # ──────────────────────────────────────────────────────────────────────────────
 # TUR SONU EKRANI
@@ -933,38 +591,38 @@ def main():
     )
     parser.add_argument("--gorselsiz", action="store_true",
                         help="OpenCV penceresi açma")
-    parser.add_argument("--canli-mqtt", action="store_true",
-                        help="Gerçek MQTT broker (varsayılan: offline)")
+    parser.add_argument("--mqtt-offline", action="store_true",
+                        help="Gerçek MQTT broker kapali, json a yaz (varsayılan: offline)")
     parser.add_argument("--hiz", type=float, default=3.0,
                         help="Waypoint bekleme süresi (sn, varsayılan: 3.0)")
     parser.add_argument("--warmup", type=int, default=MOG2_WARMUP_N,
                         help=f"MOG2 warmup iterasyonu (varsayılan: {MOG2_WARMUP_N})")
     parser.add_argument("--pdf-atlama", action="store_true",
                         help="PDF üretimini atla")
+    parser.add_argument("--broker", default="localhost")
+    parser.add_argument("--port", type=int, default=1883)
+    parser.add_argument("--deployment-id", default=CONFIG.get("deployment", {}).get("default_id", "default"),
+                        help="Deployment ID (varsayılan: default)")
     args = parser.parse_args()
 
     # Kaynak: int mi string mi?
     try:
-        kaynak = int(args.kaynak)
+        args.kaynak = int(args.kaynak)
     except (ValueError, TypeError):
-        kaynak = args.kaynak
+        pass
 
     print("=" * 65)
     print("  IP14 v2: EVRENSEL CANLI TUR — Ozgur Kotbas")
     print("  Grup 03_Gama  |  BTU  |  Staj 2026")
     print("=" * 65)
-    print(f"  Kaynak      : {kaynak}")
+    print(f"  Kaynak      : {args.kaynak}")
     print(f"  Warmup Modu : REFERANS KAREDEN ({args.warmup} iter) — v2 duzeltmesi")
-    print(f"  MQTT        : {'OFFLINE' if not args.canli_mqtt else 'CANLI'}")
+    print(f"  MQTT        : {'OFFLINE' if args.mqtt_offline else 'CANLI'}")
+    print(f"  Deployment  : {args.deployment_id}")
     print("=" * 65)
 
-    ozet = canli_tur_calistir(
-        kaynak_str = kaynak,
-        gorselsiz  = args.gorselsiz,
-        offline    = not args.canli_mqtt,
-        wp_bekleme = args.hiz,
-        warmup_n   = args.warmup,
-    )
+    yonetici = TurYonetici(args)
+    ozet = yonetici.calistir()
 
     if not ozet:
         sys.exit(1)
@@ -974,7 +632,7 @@ def main():
         print("\n" + "=" * 65)
         print("  PDF RAPORU URETILIYOR (IP13)...")
         print("=" * 65)
-        pdf_path = pdf_rapor_uret(ozet, OUT_DIR)
+        pdf_path = pdf_rapor_uret(ozet, args)
 
     print("\n" + "=" * 65)
     print("  IP14 v2 TAMAMLANDI")
