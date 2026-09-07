@@ -1,6 +1,9 @@
-import cv2, os
+import cv2, os, sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+from scripts.core import config_okuyucu
 
-project_dir = "d:/STAJ/akilli_fabrika_staj-2026"
+project_dir = str(config_okuyucu.PROJECT_ROOT)
 abnormal_dir = os.path.join(project_dir, "data/waypoints/abnormal")
 os.makedirs(abnormal_dir, exist_ok=True)
 

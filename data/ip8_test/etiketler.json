@@ -3,6 +3,11 @@
   "tarih": "2026-08-14",
   "aciklama": "Değişiklik enjekteli tur — etiketli test çifti seti (GT ground truth)",
   "gt_bbox_notu": "gt_bbox değerleri ip8_video_eslestir_analiz.py (v3) çıktısından elde edilen tespit kutularından türetilmiştir. Format: {x, y, w, h} — sol üst köşe + genişlik/yükseklik (piksel). Görüntü boyutu referans alınarak hesaplanmıştır.",
+  "bilinen_sorunlar": {
+    "WP02_gt_dairesel": "WP02 gt_bbox, MOG2'nin kendi tespit kutusundan türetildi (kaynak: mog2_nesneler[0]). Bu dairesel değerlendirme sorunudur — F1 gerçek performansı ölçmüyor. Düzeltme: Görüntü üzerinde nesneyi elle etiketle.",
+    "WP03_gt_dairesel": "WP03 gt_bbox da MOG2 union'ından türetildi. Referans amfi, test kapı — sahne farkı çok büyük; gt_bbox elle girilmeli.",
+    "WP01_not": "WP01 gt_bbox SSIM union'ından türetildi — daha güvenilir ama hâlâ otomatik. Hizalamalı sürüm IoU=0.35 (TP eşiğini geçiyor), mevcut sürüm IoU=0.094 (FP)."
+  },
   "test_ciftleri": [
     {
       "waypoint_id": "WP01",
@@ -34,7 +39,8 @@
         "w": 240,
         "h": 308,
         "kaynak": "mog2_nesneler[0] — en büyük nesne",
-        "not": "Ana koridor engeli (MOG2 en büyük fg bölgesi: 73920 px²)"
+        "not": "Ana koridor engeli (MOG2 en büyük fg bölgesi: 73920 px²). UYARI: Dairesel değerlendirme — elle etiketlenmeli.",
+        "dairesel_uyari": true
       },
       "aciklama": "Büyük engel koridora bırakıldı"
     },
@@ -51,9 +57,11 @@
         "w": 265,
         "h": 413,
         "kaynak": "mog2_nesneler union (tüm 5 nesne kapsayan bbox)",
-        "not": "Kapı bölgesi değişimi — MOG2 5 contour tespit etti (toplam alan: 80882 px²). x: min(155,212,220,390,351)=155, y: min(0,215,48,18,65)=0, x2: max(216,350,342,420,386)=420, y2: max(206,413,321,237,210)=413"
+        "not": "Kapı bölgesi değişimi — MOG2 5 contour tespit etti (toplam alan: 80882 px²). x: min(155,212,220,390,351)=155, y: min(0,215,48,18,65)=0, x2: max(216,350,342,420,386)=420, y2: max(206,413,321,237,210)=413. UYARI: Dairesel değerlendirme — elle etiketlenmeli.",
+        "dairesel_uyari": true
       },
       "aciklama": "Kapı durumu değişti"
     }
   ]
 }
+

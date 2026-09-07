@@ -66,7 +66,9 @@ class AlgilayiciMOG2:
         if self.prev_gray is not None:
             flow = cv2.calcOpticalFlowFarneback(self.prev_gray, small_gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
             mag, _ = cv2.cartToPolar(flow[..., 0], flow[..., 1])
-            flow_mag_mean = np.mean(mag)
+            # median kullan: birkaç büyük hareket pikseli ortalamayı şişirir;
+            # ortanca, gövde hareketi için çok daha kararlı bir göstergedir.
+            flow_mag_mean = float(np.median(mag))
             if flow_mag_mean > PARAMS["rotation_flow_thresh"]:
                 is_rotation = True
         self.prev_gray = small_gray

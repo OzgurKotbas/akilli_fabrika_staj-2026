@@ -28,7 +28,7 @@ vision:
 
   # FP Düzeltme Ayarları (demo_anomali v2)
   tavan_crop_oran: 0.18
-  rotation_flow_thresh: 3.5
+  rotation_flow_thresh: 0.50   # medyan optik akış; boş koridor ~0.38, yürüyüş ~1-3
   mog2_lr_drift_reset: 0.08
   mog2_warmup_n: 40
 

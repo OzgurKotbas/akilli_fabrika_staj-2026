@@ -65,7 +65,8 @@ import numpy as np
 import sys
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from scripts.core import config_okuyucu
-from scripts.core.anomali_motor import AlgilayiciMOG2, build_yellow_mask
+from scripts.core.anomali_hizalamali import AkisAlgilayici as AlgilayiciMOG2
+from scripts.core.anomali_motor import build_yellow_mask
 
 # ──────────────────────────────────────────────────────────────────────────────
 # PROJE YOLLARI

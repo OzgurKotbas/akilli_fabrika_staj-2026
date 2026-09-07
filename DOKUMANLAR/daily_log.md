@@ -449,3 +449,56 @@ Sistemi sabit değerli (hardcoded) zamanlamadan kurtarıp, zaman damgalarını d
   - Değişiklikler ve CLI test komutları kullanıcının bilgisine sunuldu, `task.md` ve `walkthrough.md` başarıyla oluşturuldu.
 
 **Sıradaki Adım:** Demo planı (İP16) ile YOLO/Levha Okuma (takım modülleri) entegrasyonu üzerine konuşulması ve demoya hazırlık.
+
+---
+
+## Hafta 7 — 7 Eylül 2026 (Kod İncelemesi & Düzeltmeler)
+
+### 📅 7 Eylül 2026 (Pazar)
+
+**Konu:** Dış kod incelemesi bulguları — Rotation Guard ve GT Bbox sorunları
+
+**Tespit edilen sorunlar ve yapılan düzeltmeler:**
+
+- [x] **Rotation Guard eşiği çok yüksekti (3.5):**
+  - `koridor_992.mp4` üzerinde ölçüldü: boş koridorda medyan optik akış = 0.38, eşik = 3.5 → hiç tetiklenmiyor.
+  - Sonuç: 992 karede 386 yanlış tespit kutusu, karelerin %22'sinde alarm.
+  - **Düzeltme 1:** `anomali_motor.py`'de `np.mean(mag)` → `np.median(mag)` değiştirildi. Birkaç büyük hareket pikseli ortalamayı şişiriyor; ortanca çok daha kararlı.
+  - **Düzeltme 2:** `config.yaml`'da `rotation_flow_thresh: 3.5` → `0.50` (boş koridor ~0.38, robot yürüyüşü ~1-3).
+  - **Beklenen etki:** Hizalamalı sürümde 1 kutuya düşen FP sayısının mevcut sürümde de ciddi oranda azalması.
+
+- [x] **WP02 ve WP03 gt_bbox dairesel değerlendirme sorunu:**
+  - WP02 gt_bbox kaynağı: `mog2_nesneler[0]` — MOG2'nin kendi çıktısı ground truth olarak yazılmış. Bu, F1 hesabını geçersiz kılıyor.
+  - WP03 gt_bbox kaynağı: `mog2_nesneler union` — aynı sorun. Referans amfi, test kapı; sahne farkı çok büyük.
+  - **Düzeltme:** `etiketler.json`'a `bilinen_sorunlar` alanı ve `dairesel_uyari: true` bayrakları eklendi. Gerçek gt_bbox için elle etiketleme gerekiyor.
+  - **Not:** WP01 gt_bbox SSIM union'ından türetildi — daha güvenilir. Hizalamalı sürüm IoU=0.35 (TP), mevcut hâl IoU=0.094 (FP).
+
+- [x] **Hardcoded Windows yolları temizlendi:**
+  - `scripts/data_prep/test_verisi_olusturma.py`: `"d:/STAJ/..."` → `config_okuyucu.PROJECT_ROOT`
+  - `scripts/vision/model_ve_heapMap.py`: `"D:/STAJ/..."` → `config_okuyucu.PROJECT_ROOT / "data" / "waypoints"`
+
+- [x] **requirements.txt anomalib/PyTorch yorum satırlarına kurulum talimatı eklendi.**
+
+**Dış öneri — entegrasyon planı (`anomali_hizalamali.py`):**
+- [x] Sağlanan `anomali_hizalamali.py` → `scripts/core/anomali_hizalamali.py` olarak eklendi. (ORB+RANSAC hizalama ve adaptif Otsu eşikleme)
+- [x] `scripts/demo_anomali.py`'de `AlgilayiciMOG2` referansı → `AkisAlgilayici` olarak değiştirildi (Drop-in replacement).
+- [x] `olc_karsilastir.py` eklendi ve `koridor_992.mp4` üzerinde MOG2 ile yeni hizalamalı sürümün FP / Kutu sayısı metrikleri karşılaştırması sağlandı.
+
+- [x] **S4-S7 Sentetik Test Verisi Üretimi (`s4_s7_veri_uret.py`):**
+  - Kamera çekimine gerek kalmadan `WP01` ve `WP02` referans kareleri üzerine programatik anomali enjeksiyonu yapıldı.
+  - S4 (Zemin sızıntısı): `WP01` zeminine eliptik yansıma eklendi (Başarılı).
+  - S5 (Yangın tüpü eksik): `WP02` sol duvarına tüp eklendi (referans), testte orijinal boş duvar kullanıldı (Ters senaryo - Başarılı).
+  - S6 (Levha değişikliği): `WP02` sağ duvardaki yeşil levha sarıya çevrildi (Başarılı).
+  - S7 (Zemin kablo): `WP01` koridoruna çapraz siyah kablo çizildi (Zor ama kullanılabilir).
+  - **S2 Düzeltme:** `WP03`'teki hatalı (referans=amfi, test=kapı) verinin yerine `WP01` derinliğindeki kapıya turuncu renk bindirilerek kapı açılma efekti denendi (Ancak zayıf/gerçekçi olmadı, `WP02` kapısında denenmesi not edildi).
+  - Üretilen veriler `data/ip8_test/etiketler_s4_s7.json` olarak kaydedildi.
+
+### Ölçüm / Değerlendirme Tablosu
+
+| Metrik / Veri Seti | Mevcut MOG2 Sürümü | Yeni Hizalamalı Sürüm | Not |
+|--------------------|--------------------|-----------------------|-----|
+| **Kutu Sayısı (992 kare boş koridor)** | 386 kutu | 1 kutu | Hizalamalı sürüm FP'yi neredeyse sıfırladı |
+| **Alarm Yüzdesi (boş koridor)** | %22 (218 kare) | %0 | Yanlış pozitif alarmlar düzeltildi |
+| **WP01 Çöp Kovası Tespit (IoU)** | 0.094 (FP) | 0.35 (TP) | Hizalamalı sürüm hedefi doğru lokalize etti |
+| **WP02 ve WP03 GT Bbox** | Dairesel (MOG2) | Dairesel (Uyarıldı) | Elle etiketleme gerekiyor |
+| **Optik Akış Medyanı** | 0.38 | - | Eşik 3.5'ten 0.50'ye düşürüldü |

@@ -1,0 +1,76 @@
+{
+  "tur": "s4_s7_sentetik_test",
+  "tarih": "2026-09-07",
+  "aciklama": "S4-S7 senaryoları için programatik anomali enjeksiyonuyla üretilmiş test çiftleri",
+  "wp03_notu": "WP03 referans=amfi, test=kapı uyumsuzluğu nedeniyle S2 senaryosu WP01 üzerinde yeniden üretildi",
+  "test_ciftleri": [
+    {
+      "senaryo": "S4",
+      "wp": "WP01",
+      "dosya": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP01_s4_sizinti.jpg",
+      "gt_bbox": {
+        "x": 52,
+        "y": 584,
+        "w": 260,
+        "h": 76
+      },
+      "tip": "zemin_sizintisi",
+      "aciklama": "Zemin su/yağ birikintisi"
+    },
+    {
+      "senaryo": "S5",
+      "wp": "WP02_tup",
+      "dosya": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP02_s5_tup_yok.jpg",
+      "referans_ozel": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\waypoints\\referans_kareler\\WP02_s5_tup_var.jpg",
+      "gt_bbox": {
+        "x": 33,
+        "y": 314,
+        "w": 38,
+        "h": 124
+      },
+      "tip": "yangin_tupu_eksik",
+      "aciklama": "Yangın tüpü duvardan alınmış — referansta tüp vardı",
+      "not": "TERS SENARYO: referansta nesne VAR, testte YOK"
+    },
+    {
+      "senaryo": "S6",
+      "wp": "WP02_levha",
+      "dosya": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP02_s6_levha_degis.jpg",
+      "referans_ozel": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\waypoints\\referans_kareler\\WP02_s6_levha_normal.jpg",
+      "gt_bbox": {
+        "x": 345,
+        "y": 241,
+        "w": 90,
+        "h": 38
+      },
+      "tip": "levha_degisikligi",
+      "aciklama": "Uyarı levhası değiştirilmiş (ÇIKIŞ→GİRİŞ, yeşil→sarı)"
+    },
+    {
+      "senaryo": "S7",
+      "wp": "WP01",
+      "dosya": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP01_s7_kablo.jpg",
+      "gt_bbox": {
+        "x": 4,
+        "y": 506,
+        "w": 303,
+        "h": 93
+      },
+      "tip": "zemin_kablaj",
+      "aciklama": "Koridoru çapraz kesen uzatma kablosu"
+    },
+    {
+      "senaryo": "S2_duzeltme",
+      "wp": "WP01",
+      "dosya": "D:\\STAJ\\akilli_fabrika_staj-2026\\data\\ip8_test\\WP01_s2_kapi_acik.jpg",
+      "gt_bbox": {
+        "x": 168,
+        "y": 241,
+        "w": 86,
+        "h": 241
+      },
+      "tip": "kapi_anomalisi",
+      "aciklama": "Kapı açık kalmış (WP01 üzerinde — WP03 sahne hatası nedeniyle)"
+    }
+  ]
+}
