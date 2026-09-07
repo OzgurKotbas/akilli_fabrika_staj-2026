@@ -112,6 +112,19 @@ def ozet_hazirla(ozet: dict) -> dict:
 # BACKEND 1: fpdf2 — Saf Python, Türkçe destekli
 # ──────────────────────────────────────────────────────────────────────────────
 
+def tr2eng(text: str) -> str:
+    """fpdf2 default fontu (Latin-1) için Türkçe karakterleri normalize eder."""
+    if not isinstance(text, str):
+        return str(text)
+    replacements = {
+        'ğ': 'g', 'Ğ': 'G', 'ş': 's', 'Ş': 'S',
+        'ı': 'i', 'İ': 'I', 'ö': 'o', 'Ö': 'O',
+        'ç': 'c', 'Ç': 'C', 'ü': 'u', 'Ü': 'U'
+    }
+    for search, replace in replacements.items():
+        text = text.replace(search, replace)
+    return text
+
 class DevriyeRaporuPDF(FPDF):
     """fpdf2 tabanlı devriye raporu PDF sınıfı."""
 
@@ -128,7 +141,7 @@ class DevriyeRaporuPDF(FPDF):
         self.set_font("Helvetica", "B", 11)
         self.set_text_color(200, 200, 230)
         self.set_xy(10, 5)
-        self.cell(0, 8, "Ozgur Kotbas - Devriye Tur Raporu  |  Gorsel Anomali Tespiti  |  Grup 03_Gama  BTU 2026")
+        self.cell(0, 8, tr2eng("Özgür Kotbaş - Devriye Tur Raporu  |  Görsel Anomali Tespiti  |  Grup 03_Gama  BTÜ 2026"))
         self.ln(14)
 
     def footer(self):
@@ -143,7 +156,7 @@ class DevriyeRaporuPDF(FPDF):
         self.set_fill_color(r, g, b)
         self.set_text_color(255, 255, 255)
         self.set_font("Helvetica", "B", 11)
-        self.cell(0, 8, metin, fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.cell(0, 8, tr2eng(metin), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         self.set_text_color(30, 30, 40)
         self.ln(2)
 
@@ -155,10 +168,10 @@ class DevriyeRaporuPDF(FPDF):
             self.set_fill_color(*bg)
             self.set_font("Helvetica", "B", 9)
             self.set_text_color(60, 60, 80)
-            self.cell(col1, 6, etiket, fill=True, border=0)
+            self.cell(col1, 6, tr2eng(etiket), fill=True, border=0)
             self.set_font("Helvetica", "", 9)
             self.set_text_color(20, 20, 40)
-            self.cell(col2, 6, str(deger), fill=True, border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            self.cell(col2, 6, tr2eng(str(deger)), fill=True, border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         self.ln(3)
 
     def uyari_karti(self, uyari: dict, sira: int):
@@ -172,11 +185,10 @@ class DevriyeRaporuPDF(FPDF):
         karar  = uyari.get("karar_aciklama", "")
         tp_fp  = uyari.get("tp_fp", {})
 
-        # Kart basligi (severity rengi)
         self.set_fill_color(*renk)
         self.set_text_color(255, 255, 255)
         self.set_font("Helvetica", "B", 10)
-        self.cell(0, 7, f"  {sira}. {wp_id}  [{tip}]  [{sev}]", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.cell(0, 7, tr2eng(f"  {sira}. {wp_id}  [{tip}]  [{sev}]"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
         # Kart govdesi
         self.set_fill_color(252, 248, 248)
@@ -226,12 +238,12 @@ class DevriyeRaporuPDF(FPDF):
         self.set_xy(20, 60)
         self.set_font("Helvetica", "B", 22)
         self.set_text_color(200, 200, 230)
-        self.multi_cell(170, 12, "Devriye Tur Raporu")
+        self.multi_cell(170, 12, tr2eng("Devriye Tur Raporu"))
 
         self.set_xy(20, 82)
         self.set_font("Helvetica", "", 13)
         self.set_text_color(160, 160, 190)
-        self.multi_cell(170, 8, "Gorsel Anomali Tespiti + Otomatik Devriye Raporu")
+        self.multi_cell(170, 8, tr2eng("Görsel Anomali Tespiti + Otomatik Devriye Raporu"))
 
         # Bilgi kutusu
         self.set_fill_color(40, 40, 70)
@@ -263,10 +275,10 @@ class DevriyeRaporuPDF(FPDF):
         self.set_font("Helvetica", "B", 36)
         if uyari_sayisi > 0:
             self.set_text_color(220, 80, 80)
-            self.cell(0, 20, f"{uyari_sayisi} / {toplam} UYARI", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            self.cell(0, 20, tr2eng(f"{uyari_sayisi} / {toplam} UYARI"), align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         else:
             self.set_text_color(80, 200, 120)
-            self.cell(0, 20, f"TUM WAYPOINT NORMAL ({toplam}/{toplam})", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            self.cell(0, 20, tr2eng(f"TÜM WAYPOINT NORMAL ({toplam}/{toplam})"), align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     def ozet_sayfasi(self, ctx: dict):
         """Özet metrikleri sayfası."""
@@ -298,28 +310,28 @@ class DevriyeRaporuPDF(FPDF):
         # Açıklama
         self.set_font("Helvetica", "I", 8)
         self.set_text_color(120, 120, 140)
-        self.multi_cell(0, 5,
-            "Not: Metrikler ip9_ensemble_analiz.py ciktilari uzerinden hesaplanmistir. "
-            "IP12 duzeltmeleri (MOG2 single-pass + PatchCore 49-patch spatial) "
-            "onceki F1=0.333 degerini iyilestirmeyi hedeflemektedir.")
+        self.multi_cell(0, 5, tr2eng(
+            "Not: Metrikler ip9_ensemble_analiz.py çıktıları üzerinden hesaplanmıştır. "
+            "IP12 düzeltmeleri (MOG2 single-pass + PatchCore 49-patch spatial) "
+            "önceki F1=0.333 değerini iyileştirmeyi hedeflemektedir."))
         self.ln(4)
 
         self.bolum_baslik("ENSEMBLE MIMARI DETAYI", r=60, g=30, b=100)
         self.set_font("Courier", "", 8)
         self.set_text_color(40, 40, 60)
         mimari = (
-            "KATMAN 1 - MOG2 Arka Plan Cikarma (aci-bagimsiz)\n"
-            "  Engel videosunu kendi icinde tarar (10 saniye pencere).\n"
+            "KATMAN 1 - MOG2 Arka Plan Çıkarma (açı-bağımsız)\n"
+            "  Engel videosunu kendi içinde tarar (10 saniye pencere).\n"
             "  Son 30 kare: learningRate=0 -> model dondurulur -> sabit nesne maskesi.\n"
-            "  [IP12] Duzeltme: cap.set() ile geri sarma kaldirildi (tek gecis).\n\n"
-            "KATMAN 2 - Spatial PatchCore (aciya ~40 dereceye kadar toleransli)\n"
-            "  ResNet18 [:-2] -> (512, 7, 7) -> 49 uzamsal patch vektoru.\n"
-            "  Her test patch'i icin en yakin referans patch cosine benzerlik.\n"
-            "  Anomali skoru = en kotü patch skoru (max anomali, global deil).\n"
-            "  [IP12] Duzeltme: Global embedding (512x1) yerine spatial (49x512).\n\n"
-            "KARAR: is_alert = (MOG2_nesne > 0) OR (PatchCore_score > esik)"
+            "  [IP12] Düzeltme: cap.set() ile geri sarma kaldırıldı (tek geçiş).\n\n"
+            "KATMAN 2 - Spatial PatchCore (açıya ~40 dereceye kadar toleranslı)\n"
+            "  ResNet18 [:-2] -> (512, 7, 7) -> 49 uzamsal patch vektörü.\n"
+            "  Her test patch'i için en yakın referans patch cosine benzerlik.\n"
+            "  Anomali skoru = en kötü patch skoru (max anomali, global değil).\n"
+            "  [IP12] Düzeltme: Global embedding (512x1) yerine spatial (49x512).\n\n"
+            "KARAR: is_alert = (MOG2_nesne > 0) OR (PatchCore_score > eşik)"
         )
-        self.multi_cell(0, 5, mimari)
+        self.multi_cell(0, 5, tr2eng(mimari))
 
     def uyarilar_sayfasi(self, ctx: dict):
         """Tum uyarilari oncelik sirasiyla yaz."""
@@ -346,9 +358,9 @@ class DevriyeRaporuPDF(FPDF):
         self.set_text_color(255, 255, 255)
         self.set_font("Helvetica", "B", 9)
         genislikler = [25, 55, 30, 40, 35]
-        basliklar   = ["Waypoint", "Tip", "MOG2 Nesne", "PatchCore Skoru", "FG Orani"]
+        basliklar   = ["Waypoint", "Tip", "MOG2 Nesne", "PatchCore Skoru", "FG Oranı"]
         for g, b in zip(genislikler, basliklar):
-            self.cell(g, 7, b, fill=True)
+            self.cell(g, 7, tr2eng(b), fill=True)
         self.ln()
 
         for i, n in enumerate(ctx["normaller"]):
@@ -366,7 +378,7 @@ class DevriyeRaporuPDF(FPDF):
                 f"{n.get('mog2_fg_ratio', 0):.4f}",
             ]
             for g, s in zip(genislikler, satirlar_):
-                self.cell(g, 6, s, fill=True)
+                self.cell(g, 6, tr2eng(s), fill=True)
             self.ln()
 
 
