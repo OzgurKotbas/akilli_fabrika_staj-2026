@@ -433,6 +433,42 @@ class _AnomalDurumu:
         self.toplam_uyari = 0
         self.kare_no      = 0
         self._gecis_uyarilari: list[dict] = []
+        
+        # Kamera Hareketi Tespiti (Odometri Simülasyonu)
+        self.prev_gray = None
+        self.p0 = None
+        self.is_moving = False
+
+    def _kamera_hareketli_mi(self, frame: np.ndarray) -> bool:
+        """Optik akış ile kameranın (robotun) fiziksel olarak ilerleyip ilerlemediğini ölçer."""
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gray = cv2.resize(gray, (0, 0), fx=0.5, fy=0.5) # Hızlandırmak için küçült
+        if self.prev_gray is None:
+            self.prev_gray = gray
+            self.p0 = cv2.goodFeaturesToTrack(gray, mask=None, maxCorners=100, qualityLevel=0.3, minDistance=7)
+            return True
+            
+        hareket = False
+        if self.p0 is not None and len(self.p0) > 0:
+            p1, st, err = cv2.calcOpticalFlowPyrLK(self.prev_gray, gray, self.p0, None)
+            if p1 is not None and st is not None:
+                good_new = p1[st == 1]
+                good_old = self.p0[st == 1]
+                if len(good_new) > 10:
+                    distances = np.linalg.norm(good_new - good_old, axis=1)
+                    mean_dist = np.mean(distances)
+                    hareket = mean_dist > 1.5  # 1.5 px'den fazla kayma varsa robot yürüyor demektir
+        
+        # Özellik noktalarını (köşeleri) yenile
+        if self.kare_no % 5 == 0 or self.p0 is None or len(self.p0) < 50:
+            self.p0 = cv2.goodFeaturesToTrack(gray, mask=None, maxCorners=100, qualityLevel=0.3, minDistance=7)
+        else:
+            self.p0 = good_new.reshape(-1, 1, 2) if 'good_new' in locals() and len(good_new) > 0 else None
+            
+        self.prev_gray = gray
+        # Hareketi yumuşat (1 karelik titremeleri engelle)
+        self.is_moving = hareket
+        return self.is_moving
 
     def isle(self, frame: np.ndarray, robot_durum: dict) -> dict:
         self.kare_no += 1
@@ -443,9 +479,10 @@ class _AnomalDurumu:
         kritik   = cls_ad in KKD_KRITIK or cls_fab in KKD_KRITIK
 
         # Öncelik 1: Robot hareket halinde → analiz atla
-        if (abs(dx) > 20 or abs(dy) > 20) and not kritik:
+        hareketli = self._kamera_hareketli_mi(frame)
+        if (abs(dx) > 20 or abs(dy) > 20 or hareketli) and not kritik:
             self.score_hist.append(0.0)
-            return self._bos_sonuc("HAREKET — analiz durduruldu")
+            return self._bos_sonuc("HAREKET (Yuruyus) — MOG2 uykuya alindi")
 
         # Öncelik 2: Kritik KKD geçiş uyarısı
         if kritik:
