@@ -48,6 +48,8 @@ ANOMALI_REPO = STAJ_DIR / "ORTAK" / "OrtakProjeler" / "OzgurKotbas_Akilli_Fabrik
 
 sys.path.insert(0, str(GOSTERGE_REPO / "src"))
 sys.path.insert(0, str(GOSTERGE_REPO / "scripts"))
+# Özgür'ün güncel kodlarını anlık çekebilmek için ana STAJ_DIR dizinini sys.path'e ekliyoruz:
+sys.path.insert(0, str(STAJ_DIR))
 
 PANEL_W, PANEL_H = 480, 360
 TITLE_H = 30
@@ -201,152 +203,63 @@ def algilama_isle(frame: np.ndarray, model, conf: float = 0.4) -> np.ndarray:
     return _letterbox(kare, PANEL_W, PANEL_H)
 
 
-# ───────────────────────── ANOMALİ (Özgür) — DÜZELTİLMİŞ ENTEGRASYON v2 ───────────────────────
-# RAPOR.md §1: anomali_test.py (eğitim scripti) demo için uygun değil.
-# ÇÖZÜM: Özgür'ün demo_anomali.py'deki AlgilayiciIP8 (SSIM+ORB) ve
-# AlgilayiciMOG2 sınıflarının mantığı buraya bağımsız sarmalayıcı olarak
-# entegre edildi. Özgür'ün hiçbir dosyası değiştirilmedi.
-# Yöntem: MOG2 arka plan çıkarma (IP9) + SSIM fark skoru (IP8 referanssız mod)
-# Çıktı: patrol/alert sözleşmesiyle uyumlu {is_alert, severity, score} bilgisi
-#
-# v2 — FP düzeltmeleri (analiz_cop_kutusu_fp.py bulgularına göre, 27.08.2026):
-#   Ö1: MOG2 warm-up — ilk kare N=40 kere learningRate=1.0 ile beslenir;
-#       history=200 yetersizliği giderilir (İP12'deki aynı prensip).
-#   Ö2: Tavan bölgesi bastırma — fg maskesinin üst %18'i sıfırlanır;
-#       kamera açı kaymasından doğan tavan/lamba gürültüsü kesilir.
-#   Sonuç: WP01 FP=3 → FP=0-1, F1 0.667 → 0.800+ hedeflenir.
+# ───────────────────────── ANOMALİ (Özgür) — DİNAMİK ENTEGRASYON ───────────────────────
+# Özgür'ün yeni hizalamali (ORB+RANSAC) modülü anlık olarak kendi repo klasöründen
+# import edilir. Böylece Özgür kendi kodunu güncelledikçe demo anında etkilenir.
 
-import math as _math
 from collections import deque as _deque
 
-# Ö1: Warm-up için referans kareyi kaç kez besleyeceğiz
-_WARMUP_N = 40
-# Ö2: Tavan crop — üst kaçta birini MOG2 fg maskesinden sıfırlayacağız
-_TAVAN_CROP_ORAN = 0.18
-
-
-class _AlgilayiciMOG2:
-    """Özgür'ün AlgilayiciMOG2 mantığı (demo_anomali.py'den bağımsız kopya).
-
-    v2: Ö1+Ö2 FP düzeltmeleri entegre edildi.
-    """
-
-    def __init__(self):
-        self.mog2 = cv2.createBackgroundSubtractorMOG2(
-            history=200, varThreshold=20, detectShadows=True)
-        self._k_open  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-        self._k_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
-        self._yellow_lo = np.array([18, 80, 80])
-        self._yellow_hi = np.array([38, 255, 255])
-        self._warmed_up = False   # Ö1: ilk kare warm-up tamamlandı mı?
-
-    def warmup(self, frame: np.ndarray, n: int = _WARMUP_N) -> None:
-        """Ö1 — MOG2 cold-start düzeltmesi.
-
-        Referans kareyi n kere learningRate=1.0 ile besleyerek arka plan
-        modelini ısıtır. history=200 yerine n=40 yeterli: MOG2 Gaussian
-        mixture yakınsaması ~30 tekrarda sabitlenir.
-        İP12 notu: 'son 30 kare learningRate=0' — burada tersine
-        'ilk 40 kare learningRate=1.0' mantığı uygulanıyor.
-        """
-        for _ in range(n):
-            self.mog2.apply(frame, learningRate=1.0)
-        self._warmed_up = True
-
-    def _yellow_mask(self, bgr):
-        hsv  = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv, self._yellow_lo, self._yellow_hi)
-        k    = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
-        return cv2.dilate(mask, k, iterations=1)
-
-    def isle(self, frame: np.ndarray) -> dict:
-        fg = self.mog2.apply(frame)
-        fg[fg == 127] = 0
-        fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN,  self._k_open)
-        fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, self._k_close)
-
-        # Ö2: Tavan bölgesi bastırma — kamera açı kaymasından gelen
-        # lamba/panel gürültüsünü keser. SSIM detektöründeki floor_crop
-        # mantığını MOG2'ye taşır (analiz_cop_kutusu_fp.py §4).
-        tavan_sinir = int(fg.shape[0] * _TAVAN_CROP_ORAN)
-        fg[:tavan_sinir, :] = 0
-
-        yellow = self._yellow_mask(frame)
-        if fg.shape != yellow.shape:
-            yellow = cv2.resize(yellow, (fg.shape[1], fg.shape[0]))
-        fg[yellow > 0] = 0
-        fg_ratio = float(np.sum(fg > 0)) / fg.size
-        nesneler = self._detect(fg, yellow)
-        return {"is_alert": len(nesneler) > 0, "nesneler": nesneler,
-                "fg_mask": fg, "fg_ratio": round(fg_ratio, 4)}
-
-    def _detect(self, mask, yellow_mask):
-        h, w = mask.shape
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
-                                        cv2.CHAIN_APPROX_SIMPLE)
-        objs = []
-        for cnt in contours:
-            if cv2.contourArea(cnt) < 1500:
-                continue
-            x, y, bw, bh = cv2.boundingRect(cnt)
-            if bw * bh > h * w * 0.40:
-                continue
-            cx, cy = x + bw // 2, y + bh // 2
-            try:
-                if yellow_mask[cy, cx] > 0:
-                    continue
-            except IndexError:
-                pass
-            objs.append({"x": int(x), "y": int(y), "w": int(bw), "h": int(bh),
-                          "area": int(bw * bh)})
-        objs.sort(key=lambda o: o["area"], reverse=True)
-        return objs
-
-
 class _AnomalDurumu:
-    """Demo boyunca yaşayan ANOMALİ durum nesnesi.
-
-    v2: İlk kare geldiğinde Ö1 warm-up otomatik tetiklenir.
-    """
-
+    """Demo boyunca yaşayan ANOMALİ durum nesnesi (Özgür'ün güncel kodunu sarmalar)."""
+    
     def __init__(self):
-        self.algilayici   = _AlgilayiciMOG2()
-        self.score_hist   = _deque(maxlen=60)
+        try:
+            from scripts.core import anomali_hizalamali as hizalamali
+            self.algilayici = hizalamali.AkisAlgilayici()
+            self.hazir = True
+        except ImportError as e:
+            print(f"[HATA] Özgür'ün güncel kodu yüklenemedi: {e}")
+            self.algilayici = None
+            self.hazir = False
+
+        self.score_hist = _deque(maxlen=60)
         self.toplam_uyari = 0
-        self.kare_no      = 0
-        self.ref_frame    = None   # İP8 referansı: ilk kare
+        self.kare_no = 0
 
     def isle(self, frame: np.ndarray) -> dict:
-        """Kare → {is_alert, severity, score, fg_mask, fg_ratio, nesneler}"""
         self.kare_no += 1
-        if self.ref_frame is None:
-            # Ö1: İlk kare gelince warm-up yap, sonra MOG2'ye gerçek kareler
-            self.ref_frame = frame.copy()
-            self.algilayici.warmup(self.ref_frame)
+        if not self.hazir:
+            return self._bos_sonuc()
 
-        sonuc    = self.algilayici.isle(frame)
-        fg_mask  = sonuc["fg_mask"]
-        fg_ratio = sonuc["fg_ratio"]
-        nesneler = sonuc["nesneler"]
-        is_alert = sonuc["is_alert"]
-
-        # Anomali skoru: MOG2 fg oranı + nesne sayısı ağırlıklı
-        score = min(1.0, fg_ratio * 15.0 + len(nesneler) * 0.15)
-        self.score_hist.append(score)
+        # Özgür'ün asıl fonksiyonunu çağırıyoruz
+        r = self.algilayici.isle(frame)
+        
+        is_alert = len(r.get("nesneler", [])) > 0
+        nesneler = r.get("nesneler", [])
+        
         if is_alert:
             self.toplam_uyari += 1
-
-        severity = ("HIGH"   if len(nesneler) >= 2 else
-                    "MEDIUM" if len(nesneler) == 1 else "NONE")
+            
+        severity = "HIGH" if len(nesneler) >= 2 else ("MEDIUM" if len(nesneler) == 1 else "NONE")
+        score = min(1.0, len(nesneler) * 0.5)
+        self.score_hist.append(score)
+        
         return {
-            "is_alert":    is_alert,
-            "severity":    severity,
-            "score":       score,
-            "fg_mask":     fg_mask,
-            "fg_ratio":    fg_ratio,
-            "nesneler":    nesneler,
-            "kare_no":     self.kare_no,
+            "is_alert": is_alert,
+            "severity": severity,
+            "score": score,
+            "fg_mask": None,   # Hizalamalı sürüm maske döndürmediği için None
+            "fg_ratio": 0.0,
+            "nesneler": nesneler,
+            "kare_no": self.kare_no,
             "toplam_uyari": self.toplam_uyari,
+        }
+        
+    def _bos_sonuc(self):
+        return {
+            "is_alert": False, "severity": "NONE", "score": 0.0,
+            "fg_mask": None, "fg_ratio": 0.0, "nesneler": [],
+            "kare_no": self.kare_no, "toplam_uyari": self.toplam_uyari,
         }
 
 
