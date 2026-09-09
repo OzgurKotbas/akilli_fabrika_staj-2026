@@ -1040,7 +1040,14 @@ Robot köpek için en optimal mimari **İki Fazlı (Hibrit) Sistem** olmalıdır
 1. **Hareket Halindeyken (Transit):** Arka plan çıkarma (MOG2) ve homografi kullanılmamalıdır. Bunun yerine sadece Bedirhan'ın **YOLO (Nesne Tespiti)** modeli aktif olmalı, "Düşen İşçi", "Baret Yok", "Forklift Yolu Tıkıyor" gibi bilinen tehlikeler aranmalıdır. Ayrıca basit bir renk uzayı (HSV) veya semantik segmentasyon ile zemindeki sıvı sızıntıları aranabilir.
 2. **Duraklama Anında (Waypoint):** Robot hedefe varıp durduğunda kamera sabitlenir. Bu anda **MOG2** çalışarak ortama sonradan bırakılmış yabancı cisimleri tespit ederken, **PatchCore** (yapısal anomali) ile borulardaki bükülme, kırılma veya kapı durumları analiz edilir.
 
-*(Not: Bu analiz sonrası, robotun hareket durumunu tespit edip hareket anında MOG2'yi durduran Öncelik 1 ve 2 düzeltmeleri sisteme başarıyla entegre edilmiştir.)*
+#### 4. Demo V2 Güncellemeleri ve Yazılımsal Çözümler (Eylül 2026)
+Yukarıdaki mimari sorunları ve iş paketlerindeki eksiklikleri gidermek amacıyla `run_demo.py` V2 sürümüne güncellenmiş ve aşağıdaki özellikler kazandırılmıştır:
+- **Tüm Modüller İçin MQTT Entegrasyonu:** Reşit (`inspect/reading`), Bedirhan (`vision/target_offset`) ve Özgür (`patrol/alert`) modülleri için `paho-mqtt` yayını koda eklendi. Broker yoksa veriler JSONL dosyalarına loglanır.
+- **Odometri (Hareket) Simülasyonu:** Robotun tekerlek verisi olmadığı için kameranın ilerleyişi **Optik Akış (Lucas-Kanade Optical Flow)** ile hesaplanmış; piksel kayması 1.5px'i geçtiğinde MOG2 algoritması otomatik olarak uyku moduna alınarak 3D Parallax kaynaklı yanlış alarmlar (False Positive) bastırılmıştır.
+- **Kategori Tabanlı Skorlama:** MOG2 nesnelerinin HSV (renk) ve en/boy oranlarına bakılarak `YAPI_ANOMALISI` (dikey ince), `ZEMIN_SIZINTISI` (karanlık yatay) ve `YABANCI_NESNE` olarak kategorize edilmesi sağlandı.
+- **Kapalı Çevrim Kontrol Logu:** Pan-tilt servo motoru olmamasına rağmen, Bedirhan'ın hedef ofsetinden (`dx, dy`) yola çıkılarak PID kontrol algoritması simüle edilmiş ve gereken `pan/tilt deg/s` hızları hesaplanıp loglara basılmıştır.
+- **Fabrika Sınıf Haritası:** Standart COCO sınıfları (person, truck) fabrika KKD sınıflarına (insan, agir_arac, baret vb.) dinamik olarak haritalanmıştır.
+- **Otomatik Raporlama:** Tur bitiminde anomali sayısı, FPS, MQTT paket sayısı ve okunan göstergelerin özetini barındıran `demo_rapor_YYYYMMDD.md` otomatik olarak üretilmektedir.
 
 ---
 
