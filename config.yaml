@@ -57,3 +57,27 @@ paths:
   ensemble_ozet_json: "data/ip9_ensemble/ensemble_ozet.json"
   referans_kareler_dir: "data/waypoints/referans_kareler"
   ip8_test_dir: "data/ip8_test"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ROBOT DURUM ENTEGRASYONU (Öncelik 1 & 2)
+# ip14_canli_tur.py bu bloğu okur.
+# ──────────────────────────────────────────────────────────────────────────────
+robot_durum:
+  # Öncelik 1: Hareket eşikleri (piksel, Bedirhan'ın dx/dy koordinat sisteminde)
+  # |dx| <= hareket_esik_dx AND |dy| <= hareket_esik_dy → robot sabit → analiz yap
+  # Bu değerlerin üstündeyse robot hareket halinde sayılır → analiz atlanır (yanlış alarm önleme)
+  hareket_esik_dx: 20
+  hareket_esik_dy: 20
+
+  # Bedirhan'ın ofset yayını MQTT topic'i (dondurulmuş şema)
+  ofset_topic: "vision/target_offset"
+
+  # Öncelik 2: Waypointler arası geçişte patrol/alert'e eklenecek kritik YOLO sınıfları
+  # Bedirhan'ın vision/target_offset mesajındaki "class" alanı bu listeyle karşılaştırılır.
+  kritik_siniflar:
+    - "Fall-Detected"
+    - "NO-Hardhat"
+    - "NO-Safety Vest"
+    - "NO-Gloves"
+    - "NO-Goggles"
+    - "NO-Mask"

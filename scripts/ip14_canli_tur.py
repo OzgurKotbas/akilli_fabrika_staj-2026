@@ -45,6 +45,7 @@ KLAVYE (pencere açıksa):
 
 import argparse
 import json
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -57,6 +58,12 @@ from scripts.core import config_okuyucu
 from scripts.core.anomali_motor import AlgilayiciMOG2, build_yellow_mask
 from scripts.core.kaynak_adaptoru import KaynakAdaptoru
 from scripts.comms.ip10_mqtt_yayini import PatrolMQTTYayinci
+
+try:
+    import paho.mqtt.client as mqtt
+    MQTT_AVAILABLE = True
+except ImportError:
+    MQTT_AVAILABLE = False
 
 # ──────────────────────────────────────────────────────────────────────────────
 # PROJE YOLLARI
@@ -110,7 +117,110 @@ SEVERITY_MAP = {
 
 MOG2_WARMUP_N = _vis_conf.get("mog2_warmup_n", 40)
 
+# Robot durum eşikleri (config.yaml'dan, yoksa varsayılan)
+_robot_cfg = CONFIG.get("robot_durum", {})
+ROBOT_HAREKET_ESIK_DX  = _robot_cfg.get("hareket_esik_dx", 20)   # px — bu değerin üstünde hareket sayılır
+ROBOT_HAREKET_ESIK_DY  = _robot_cfg.get("hareket_esik_dy", 20)   # px
+ROBOT_OFSET_TOPIC      = _robot_cfg.get("ofset_topic", "vision/target_offset")
+
+# Öncelik 2: waypointler arası geçişte yakalanacak kritik YOLO sınıfları
+KRITIK_SINIFLAR = set(_robot_cfg.get(
+    "kritik_siniflar",
+    ["Fall-Detected", "NO-Hardhat", "NO-Safety Vest", "NO-Gloves", "NO-Goggles", "NO-Mask"]
+))
+
 # KaynakAdaptoru artık scripts.core.kaynak_adaptoru içerisinden kullanılıyor
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ÖNCELİK 1 & 2 — ROBOT DURUM ABONESİ
+# Bedirhan'ın vision/target_offset mesajlarını pasif olarak dinler.
+# Öncelik 1: |dx|>ESIK veya |dy|>ESIK → robot hareket halinde → analizi atla
+# Öncelik 2: Kritik YOLO sınıfı tespit edilirse waypoint geçişine anomali ekle
+# ──────────────────────────────────────────────────────────────────────────────
+
+class RobotDurumAbone:
+    """
+    Bedirhan'ın vision/target_offset MQTT topic'ini arka planda dinler.
+    - robot_sabit()  → True ise anomali değerlendirmesi yapılabilir
+    - gecis_uyarilari() → Geçişlerde yakalanan kritik YOLO nesneleri
+    """
+
+    def __init__(self, broker: str = "localhost", port: int = 1883,
+                 offline: bool = False):
+        self._dx: float = 0.0
+        self._dy: float = 0.0
+        self._son_sinif: str = ""
+        self._son_ts: float = 0.0
+        self._gecis_uyarilari: list[dict] = []
+        self._lock = threading.Lock()
+        self._client = None
+
+        if offline or not MQTT_AVAILABLE:
+            print("  [RobotDurum] MQTT yok / offline — robot hep 'sabit' sayılır.")
+            return
+
+        try:
+            self._client = mqtt.Client(client_id=f"anomali_robot_abone_{int(time.time())%10000}")
+            self._client.on_message = self._mesaj_isle
+            self._client.connect(broker, port, keepalive=30)
+            self._client.subscribe(ROBOT_OFSET_TOPIC, qos=0)
+            self._client.loop_start()
+            print(f"  [RobotDurum] vision/target_offset aboneliği: {broker}:{port}")
+        except Exception as e:
+            print(f"  [RobotDurum] Broker bağlantısı kurulamadı: {e}")
+            print("           Robot hep 'sabit' sayılacak (güvenli taraf).")
+            self._client = None
+
+    def _mesaj_isle(self, _client, _userdata, msg):
+        """Gelen target_offset mesajını thread-safe biçimde sakla."""
+        try:
+            veri = json.loads(msg.payload.decode())
+            with self._lock:
+                self._dx = float(veri.get("dx", 0.0))
+                self._dy = float(veri.get("dy", 0.0))
+                self._son_sinif = veri.get("class", "")
+                self._son_ts = time.time()
+                # Öncelik 2: kritik sınıf → geçiş uyarı listesine ekle
+                if self._son_sinif in KRITIK_SINIFLAR:
+                    self._gecis_uyarilari.append({
+                        "sinif": self._son_sinif,
+                        "conf": float(veri.get("conf", 0.0)),
+                        "dx": self._dx,
+                        "dy": self._dy,
+                        "ts": datetime.now().isoformat(),
+                    })
+        except Exception:
+            pass  # Bozuk mesaj — sessizce geç
+
+    def robot_sabit(self) -> bool:
+        """
+        True  → robot sabit (|dx| ve |dy| eşik altında) → anomali analizi yapılabilir
+        False → robot hareket halinde → analizi atla, yanlış alarm üretme
+        """
+        if self._client is None:
+            return True   # MQTT bağlı değil → güvenli taraf: her zaman analiz yap
+        # Son mesaj 3 saniyeden eskiyse bağlantı kopuk demektir → güvenli taraf
+        if time.time() - self._son_ts > 3.0:
+            return True
+        with self._lock:
+            return (abs(self._dx) <= ROBOT_HAREKET_ESIK_DX and
+                    abs(self._dy) <= ROBOT_HAREKET_ESIK_DY)
+
+    def gecis_uyarilari_al_temizle(self) -> list[dict]:
+        """Biriken geçiş uyarılarını döndür ve listeyi temizle."""
+        with self._lock:
+            uyarilar = list(self._gecis_uyarilari)
+            self._gecis_uyarilari.clear()
+        return uyarilar
+
+    def kapat(self):
+        if self._client is not None:
+            try:
+                self._client.loop_stop()
+                self._client.disconnect()
+            except Exception:
+                pass
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -471,6 +581,15 @@ class TurYonetici:
         )
         self.analizci = WaypointAnalizci(self.adaptoru)
 
+        # ── ÖNCELİK 1 & 2: Robot durum abonesi ──────────────────────────────
+        # vision/target_offset dinlenir; hareket halinde analiz atlanır,
+        # geçişlerde kritik YOLO nesneleri anomali listesine eklenir.
+        self.robot_abone = RobotDurumAbone(
+            broker=self.args.broker,
+            port=self.args.port,
+            offline=self.args.mqtt_offline,
+        )
+
     def calistir(self):
         tur_baslangic = datetime.now()
         waypoints = waypoint_listesi_yukle()
@@ -481,7 +600,47 @@ class TurYonetici:
             wp_id    = wp["id"]
             ref_path = wp["ref_path"]
             ref_bgr = cv2.imread(str(ref_path)) if ref_path.exists() else np.full((480, 640, 3), (20, 60, 20), dtype=np.uint8)
-            
+
+            # ── ÖNCELİK 2: Waypoint'e varmadan önceki geçiş uyarılarını topla ──
+            gecis_uyarilari = self.robot_abone.gecis_uyarilari_al_temizle()
+            if gecis_uyarilari:
+                print(f"  [Geçiş→{wp_id}] {len(gecis_uyarilari)} kritik YOLO nesnesi geçişte yakalandı:")
+                for u in gecis_uyarilari:
+                    print(f"    - {u['sinif']} (conf={u['conf']:.2f}) dx={u['dx']:.0f} dy={u['dy']:.0f}")
+                    wp_sonuclari.append({
+                        "waypoint_id": f"{wp_id}_gecis",
+                        "is_alert": True,
+                        "severity": "HIGH",
+                        "karar_aciklama": (
+                            f"Geçiş anında {u['sinif']} tespit edildi "
+                            f"(Bedirhan/YOLO conf={u['conf']:.2f})"
+                        ),
+                    })
+                    uyari_sayisi += 1
+                    self.mqtt.yayinla({
+                        "type": "patrol_alert",
+                        "severity": "HIGH",
+                        "waypoint": f"{wp_id}_gecis",
+                        "score": round(u["conf"], 3),
+                        "det_count": 1,
+                        "img_ref": "",
+                        "is_alert": True,
+                        "ts": u["ts"],
+                        "degisiklik_tipi": "yolo_gecis_tespiti",
+                        "karar_aciklama": f"YOLO: {u['sinif']} geçişte tespit",
+                    })
+
+            # ── ÖNCELİK 1: Robot sabit mi? Değilse bu waypoint'i atla ──────────
+            if not self.robot_abone.robot_sabit():
+                print(f"  [{wp_id}] Robot hareket halinde — waypoint analizi atlandı (yanlış alarm önleme).")
+                wp_sonuclari.append({
+                    "waypoint_id": wp_id,
+                    "is_alert": False,
+                    "severity": "NONE",
+                    "karar_aciklama": "Robot hareket halindeydi — analiz atlandı.",
+                })
+                continue
+
             deg_path      = wp.get("deg_path")
             test_statik   = cv2.imread(str(deg_path)) if deg_path and Path(deg_path).exists() else None
             test_saniye   = wp["video_saniye"] if test_statik is None and self.adaptoru._is_video else None
@@ -495,17 +654,26 @@ class TurYonetici:
             
             self.mqtt.yayinla({
                 "type": "patrol_alert",
+                "severity": "HIGH" if is_alert else "NONE",
                 "waypoint": wp_id,
+                "score": 1.0 if is_alert else 0.0,
+                "det_count": len(sonuc.get("nesneler", [])),
+                "img_ref": str(kanit_dosyasi),
                 "is_alert": is_alert,
-                "ts": datetime.now().isoformat()
+                "ts": datetime.now().isoformat(),
+                "degisiklik_tipi": wp.get("degisiklik_tipi", "bilinmiyor"),
+                "karar_aciklama": f"MOG2: {len(sonuc.get('nesneler', []))} nesne",
             })
             
             wp_sonuclari.append({
-                "waypoint_id": wp_id, "is_alert": is_alert, 
-                "karar_aciklama": f"MOG2: {len(sonuc.get('nesneler', []))} nesne"
+                "waypoint_id": wp_id,
+                "is_alert": is_alert,
+                "severity": "HIGH" if is_alert else "NONE",
+                "karar_aciklama": f"MOG2: {len(sonuc.get('nesneler', []))} nesne",
             })
             
         if self.adaptoru: self.adaptoru.release()
+        if self.robot_abone: self.robot_abone.kapat()
         if self.mqtt: self.mqtt.kapat()
         
         return {
