@@ -33,15 +33,8 @@
       "degisiklik_tipi": "yol_engeli",
       "senaryo": "S3",
       "severity": "HIGH",
-      "gt_bbox": {
-        "x": 137,
-        "y": 536,
-        "w": 240,
-        "h": 308,
-        "kaynak": "mog2_nesneler[0] — en büyük nesne",
-        "not": "Ana koridor engeli (MOG2 en büyük fg bölgesi: 73920 px²). UYARI: Dairesel değerlendirme — elle etiketlenmeli.",
-        "dairesel_uyari": true
-      },
+      "gt_bbox": null,
+      "not": "Geri bildirim: WP02'de referans ve test ikisi de boş koridor, anomali yok. MOG2'nin sahte kutusu iptal edildi.",
       "aciklama": "Büyük engel koridora bırakıldı"
     },
     {
@@ -51,15 +44,8 @@
       "degisiklik_tipi": "kapi_anomalisi",
       "senaryo": "S2",
       "severity": "HIGH",
-      "gt_bbox": {
-        "x": 155,
-        "y": 0,
-        "w": 265,
-        "h": 413,
-        "kaynak": "mog2_nesneler union (tüm 5 nesne kapsayan bbox)",
-        "not": "Kapı bölgesi değişimi — MOG2 5 contour tespit etti (toplam alan: 80882 px²). x: min(155,212,220,390,351)=155, y: min(0,215,48,18,65)=0, x2: max(216,350,342,420,386)=420, y2: max(206,413,321,237,210)=413. UYARI: Dairesel değerlendirme — elle etiketlenmeli.",
-        "dairesel_uyari": true
-      },
+      "gt_bbox": null,
+      "not": "Geri bildirim: WP03'te referans amfi, test bir kapı. Kıyaslama yapılamaz. MOG2'nin sahte kutusu iptal edildi.",
       "aciklama": "Kapı durumu değişti"
     }
   ]

@@ -32,6 +32,18 @@ vision:
   mog2_lr_drift_reset: 0.08
   mog2_warmup_n: 40
 
+  # Hizalamalı Anomali (ORB + RANSAC) Ayarları
+  orb_features: 2000
+  ransac_min_match: 12
+  ransac_min_inlier: 10
+  mad_k: 6.0
+  min_abs_diff: 18
+  morph_size: 7
+  parlama_v: 235
+  parlama_s: 45
+  parlama_dilate: 9
+  sari_dilate: 15
+
 paths:
   # Proje kök dizinine (ROOT) göre göreceli yollar
   waypoints_yaml: "data/waypoints/waypoint_listesi.yaml"
@@ -41,3 +53,7 @@ paths:
   # Varsayılan test videoları
   default_altin_video: "data/raw_videos/altin_tur_v2.mp4"
   default_engel_video: "data/raw_videos/engel.mp4"
+  default_koridor_video: "data/raw_videos/koridor_992.mp4"
+  ensemble_ozet_json: "data/ip9_ensemble/ensemble_ozet.json"
+  referans_kareler_dir: "data/waypoints/referans_kareler"
+  ip8_test_dir: "data/ip8_test"
