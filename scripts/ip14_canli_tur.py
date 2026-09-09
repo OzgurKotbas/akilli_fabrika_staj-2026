@@ -652,6 +652,11 @@ class TurYonetici:
             kanit_dosyasi = OUT_DIR / f"{wp_id}_canli_kare.jpg"
             cv2.imwrite(str(kanit_dosyasi), sonuc["test_frame"])
             
+            # Öncelik 4: Kategori tespiti (en büyük nesnenin kategorisi alınır)
+            kategoriler = [n.get("kategori", "yabanci_sabit_nesne") for n in sonuc.get("nesneler", [])]
+            ana_kategori = kategoriler[0] if kategoriler else wp.get("degisiklik_tipi", "bilinmiyor")
+            karar_ack = f"{ana_kategori.upper()} — MOG2: {len(sonuc.get('nesneler', []))} nesne"
+            
             self.mqtt.yayinla({
                 "type": "patrol_alert",
                 "severity": "HIGH" if is_alert else "NONE",
@@ -661,15 +666,15 @@ class TurYonetici:
                 "img_ref": str(kanit_dosyasi),
                 "is_alert": is_alert,
                 "ts": datetime.now().isoformat(),
-                "degisiklik_tipi": wp.get("degisiklik_tipi", "bilinmiyor"),
-                "karar_aciklama": f"MOG2: {len(sonuc.get('nesneler', []))} nesne",
+                "degisiklik_tipi": ana_kategori,
+                "karar_aciklama": karar_ack,
             })
             
             wp_sonuclari.append({
                 "waypoint_id": wp_id,
                 "is_alert": is_alert,
                 "severity": "HIGH" if is_alert else "NONE",
-                "karar_aciklama": f"MOG2: {len(sonuc.get('nesneler', []))} nesne",
+                "karar_aciklama": karar_ack,
             })
             
         if self.adaptoru: self.adaptoru.release()

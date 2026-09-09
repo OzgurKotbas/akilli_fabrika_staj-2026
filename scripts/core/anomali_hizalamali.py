@@ -204,6 +204,28 @@ class AkisAlgilayici:
         onayli = [iz["kutu"] for iz in self._izler
                   if iz["vurus"] >= self.onay_kare and iz["gorulen"]]
         onayli.sort(key=lambda o: -o["area"])
+        
+        # ÖNCELİK 4: Kategori Tabanlı Anomali Sınıflandırması
+        for o in onayli:
+            x, y, w, h = o["x"], o["y"], o["w"], o["h"]
+            roi = kare[max(0, y):y+h, max(0, x):x+w]
+            if roi.size > 0:
+                hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+                v_mean = hsv[..., 2].mean()
+                s_mean = hsv[..., 1].mean()
+                
+                # Zemin sızıntısı (S4): Karanlık, düşük doygunluk, yayvan (ıslak zemin/su)
+                if v_mean < 80 and s_mean < 60 and w > h * 1.5:
+                    o["kategori"] = "zemin_sizintisi"
+                # Yapı/Kapı anomalisi: Dikey, ince uzun (açık kapı, direk vb.)
+                elif h > w * 1.5:
+                    o["kategori"] = "yapi_anomalisi"
+                # Standart anomali
+                else:
+                    o["kategori"] = "yabanci_sabit_nesne"
+            else:
+                o["kategori"] = "yabanci_sabit_nesne"
+
         return {"ok": True, "nesneler": onayli, "aday": adaylar,
                 "esik": round(esik, 1), "iceride": hz.iceride}
 

@@ -167,12 +167,14 @@ def algilama_hazirla(agirlik_yolu: Path):
     return YOLO(str(agirlik_yolu))
 
 
-def algilama_isle(frame: np.ndarray, model, conf: float = 0.4) -> np.ndarray:
+def algilama_isle(frame: np.ndarray, model, conf: float = 0.4) -> tuple[np.ndarray, dict]:
     kare = frame.copy()
     fh, fw = kare.shape[:2]
     sonuclar = model.track(source=frame, conf=conf, persist=True, verbose=False)
 
     en_iyi, en_yuksek_conf = None, -1.0
+    dx, dy = 0, 0
+    cls_ad = ""
     if len(sonuclar) > 0 and sonuclar[0].boxes is not None and sonuclar[0].boxes.id is not None:
         kutular = sonuclar[0].boxes
         for i, kutu in enumerate(kutular):
@@ -192,6 +194,7 @@ def algilama_isle(frame: np.ndarray, model, conf: float = 0.4) -> np.ndarray:
         cx, cy = (en_iyi["x1"] + en_iyi["x2"]) // 2, (en_iyi["y1"] + en_iyi["y2"]) // 2
         fcx, fcy = fw // 2, fh // 2
         dx, dy = cx - fcx, cy - fcy
+        cls_ad = en_iyi["cls"]
         cv2.circle(kare, (cx, cy), 5, (0, 0, 255), -1)
         cv2.line(kare, (fcx, fcy), (cx, cy), (255, 0, 0), 2)
         cv2.putText(kare, f"dx:{dx} dy:{dy}", (cx + 8, cy - 8),
@@ -200,7 +203,8 @@ def algilama_isle(frame: np.ndarray, model, conf: float = 0.4) -> np.ndarray:
         cv2.putText(kare, "hedef yok", (14, 28), cv2.FONT_HERSHEY_SIMPLEX,
                     0.7, (0, 165, 255), 2)
 
-    return _letterbox(kare, PANEL_W, PANEL_H)
+    robot_durum = {"dx": dx, "dy": dy, "class": cls_ad}
+    return _letterbox(kare, PANEL_W, PANEL_H), robot_durum
 
 
 # ───────────────────────── ANOMALİ (Özgür) — DİNAMİK ENTEGRASYON ───────────────────────
@@ -226,33 +230,62 @@ class _AnomalDurumu:
         self.toplam_uyari = 0
         self.kare_no = 0
 
-    def isle(self, frame: np.ndarray) -> dict:
+    def isle(self, frame: np.ndarray, robot_durum: dict) -> dict:
         self.kare_no += 1
         if not self.hazir:
             return self._bos_sonuc()
 
-        # Özgür'ün asıl fonksiyonunu çağırıyoruz
-        r = self.algilayici.isle(frame)
-        
-        is_alert = len(r.get("nesneler", [])) > 0
-        nesneler = r.get("nesneler", [])
+        dx = robot_durum.get("dx", 0)
+        dy = robot_durum.get("dy", 0)
+        cls_ad = robot_durum.get("class", "")
+
+        hareketli_mi = abs(dx) > 20 or abs(dy) > 20
+        kritik_siniflar = {"Fall-Detected", "NO-Hardhat", "NO-Safety Vest", "NO-Gloves", "NO-Goggles", "NO-Mask"}
+        kritik_gecis = cls_ad in kritik_siniflar
+
+        if hareketli_mi and not kritik_gecis:
+            # Öncelik 1: Hareket ediyor → Analizi atla (FP'leri engeller)
+            r = self._bos_sonuc()
+            r["karar_aciklama"] = "HAREKET HALINDE - Gormezden Gelindi"
+            return r
+
+        if kritik_gecis:
+            # Öncelik 2: Kritik YOLO nesnesi bulundu
+            is_alert = True
+            nesneler = [{"x": 0, "y": 0, "w": 0, "h": 0}] # Ekranda boş durmasın
+            severity = "HIGH"
+            score = 1.0
+            r_fg_mask = None
+            karar_aciklama = f"YOLO TESPITI: {cls_ad}"
+        else:
+            # Normal (Sabit) Anomali Analizi
+            r = self.algilayici.isle(frame)
+            is_alert = len(r.get("nesneler", [])) > 0
+            nesneler = r.get("nesneler", [])
+            severity = "HIGH" if len(nesneler) >= 2 else ("MEDIUM" if len(nesneler) == 1 else "NONE")
+            score = min(1.0, len(nesneler) * 0.5)
+            r_fg_mask = r.get("fg_mask", None)
+            
+            # Öncelik 4: Kategori gösterimi
+            kategoriler = [n.get("kategori", "yabanci_sabit_nesne") for n in nesneler]
+            ana_kategori = kategoriler[0] if kategoriler else "NORMAL"
+            karar_aciklama = f"MOG2: {ana_kategori.upper()}" if is_alert else ""
         
         if is_alert:
             self.toplam_uyari += 1
             
-        severity = "HIGH" if len(nesneler) >= 2 else ("MEDIUM" if len(nesneler) == 1 else "NONE")
-        score = min(1.0, len(nesneler) * 0.5)
         self.score_hist.append(score)
         
         return {
             "is_alert": is_alert,
             "severity": severity,
             "score": score,
-            "fg_mask": None,   # Hizalamalı sürüm maske döndürmediği için None
+            "fg_mask": r_fg_mask,
             "fg_ratio": 0.0,
             "nesneler": nesneler,
             "kare_no": self.kare_no,
             "toplam_uyari": self.toplam_uyari,
+            "karar_aciklama": karar_aciklama,
         }
         
     def _bos_sonuc(self):
@@ -260,16 +293,17 @@ class _AnomalDurumu:
             "is_alert": False, "severity": "NONE", "score": 0.0,
             "fg_mask": None, "fg_ratio": 0.0, "nesneler": [],
             "kare_no": self.kare_no, "toplam_uyari": self.toplam_uyari,
+            "karar_aciklama": "",
         }
 
 
-def anomali_isle(frame: np.ndarray, durum: "_AnomalDurumu") -> np.ndarray:
+def anomali_isle(frame: np.ndarray, durum: "_AnomalDurumu", robot_durum: dict) -> np.ndarray:
     """Kare → ANOMALİ paneli (480×360 BGR).
 
     patrol/alert sözleşmesi: is_alert, severity, score gösterilir.
     Özgür'ün hiçbir dosyası değiştirilmedi — bağımsız sarmalayıcı.
     """
-    r = durum.isle(frame)
+    r = durum.isle(frame, robot_durum)
 
     # Panel arka planı: fg mask üstüne canlı kare karışımı
     if r["fg_mask"] is not None:
@@ -286,6 +320,10 @@ def anomali_isle(frame: np.ndarray, durum: "_AnomalDurumu") -> np.ndarray:
     cv2.rectangle(panel, (0, 0), (PANEL_W, 28), (0, 0, 0), -1)
     cv2.putText(panel, btxt, (8, 20), cv2.FONT_HERSHEY_SIMPLEX,
                 0.60, brenk, 2, cv2.LINE_AA)
+    
+    if r.get("karar_aciklama"):
+        cv2.putText(panel, r["karar_aciklama"], (8, 45), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.50, (0, 255, 255) if r["is_alert"] else (0, 150, 255), 1, cv2.LINE_AA)
 
     # Tespit kutuları
     for i, obj in enumerate(r["nesneler"][:3]):
@@ -409,13 +447,14 @@ def main(argv=None) -> int:
             try:
                 if algilama_hata is not None:
                     raise RuntimeError(algilama_hata)
-                p2 = algilama_isle(frame, amodel)
+                p2, robot_durum = algilama_isle(frame, amodel)
             except Exception as e:
                 p2 = _hata_paneli(frame, str(e))
+                robot_durum = {"dx": 0, "dy": 0, "class": ""}
             p2 = _basliklandir(p2, "ALGILAMA (Bedirhan)")
 
             try:
-                p3 = anomali_isle(frame, anomali_durumu)
+                p3 = anomali_isle(frame, anomali_durumu, robot_durum)
                 p3 = _basliklandir(p3, "ANOMALI (Ozgur) — IP8+MOG2")
             except Exception as e:
                 p3 = _hata_paneli(frame, str(e))
