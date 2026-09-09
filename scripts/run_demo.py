@@ -46,9 +46,10 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-DEMO_DIR  = Path(__file__).resolve().parent
-REPO_DIR  = DEMO_DIR.parent          # rasrav_gauge_repo
-STAJ_DIR  = REPO_DIR.parent          # akilli_fabrika_staj-2026
+SCRIPT_DIR = Path(__file__).resolve().parent # scripts
+STAJ_DIR   = SCRIPT_DIR.parent               # akilli_fabrika_staj-2026
+REPO_DIR   = STAJ_DIR / "rasrav_gauge_repo"  # Reşit's repo (Github'da yok, sadece lokalde)
+DEMO_DIR   = STAJ_DIR / "demo_ciktilari"     # Çıktıların kaydedileceği yer
 
 sys.path.insert(0, str(REPO_DIR / "src"))
 sys.path.insert(0, str(REPO_DIR / "scripts"))

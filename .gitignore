@@ -105,3 +105,10 @@ duzelt/
 outputs/
 data/ip9_ensemble/*.png
 data/ip9_ensemble/*.json
+
+# Local test and Reþit repo files
+rasrav_gauge_repo/
+kontrol_et/
+raporlar_repo/
+demo_ciktilari/
+
