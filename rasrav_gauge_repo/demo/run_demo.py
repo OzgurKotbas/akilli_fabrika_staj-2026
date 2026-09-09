@@ -244,27 +244,33 @@ def gosterge_isle(frame: np.ndarray, model, gauge, conf: float,
                     (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 165, 255), 1)
 
     # Reşit İP15: unreadable bayrağı — conf_threshold gauges.yaml'da 0.70
+    # NOT: FrameResult'ın value alanı reading.value üzerinden alınır.
     okuma_durumu = "ok"
     deger_str    = "—"
     if sonuc is not None:
-        if sonuc.value is not None:
-            deger_str = f"{sonuc.value:.2f}"
-        # conf threshold (İP15): gauge config'ten veya varsayılan 0.70
+        # reading alt nesnesi: GaugeReading dataclass → .value, .conf alanları
+        okuma = getattr(sonuc, "reading", None)
+        deger = getattr(okuma, "value", None) if okuma else None
+        okuma_conf = getattr(okuma, "conf", getattr(sonuc, "detect_conf", 0.0))
+        if deger is not None:
+            deger_str = f"{deger:.2f}"
+        # İP15: conf < eşik → unreadable (yanlış okumaktansa okuyamadım)
         esik = getattr(gauge, "conf_threshold", 0.70) if gauge else 0.70
-        if getattr(sonuc, "conf", 1.0) < esik:
+        if okuma_conf < esik or deger is None:
             okuma_durumu = "unreadable"
-            deger_str = "unreadable"
+            deger_str    = "unreadable" if deger is None else f"unreadable({deger:.2f})"
 
     # Reşit İP10: MQTT yayını — her 15 karede bir (~1 Hz @15fps)
     if kare_no % 15 == 0:
+        okuma = getattr(sonuc, "reading", None) if sonuc else None
         mqtt.yayinla("inspect/reading", {
             "schema": 1,
             "gauge_id": gauge.id if gauge else "unknown",
             "type":     "analog",
-            "value":    sonuc.value if (sonuc and sonuc.value is not None) else None,
+            "value":    getattr(okuma, "value", None) if okuma else None,
             "unit":     gauge.unit if gauge else None,
             "status":   okuma_durumu,
-            "conf":     round(getattr(sonuc, "conf", 0.0), 3) if sonuc else 0.0,
+            "conf":     round(getattr(okuma, "conf", 0.0), 3) if okuma else 0.0,
         })
 
     okuma_ozet = {
@@ -515,8 +521,17 @@ def anomali_isle(frame: np.ndarray, durum: _AnomalDurumu,
     """
     Özgür İP9: Ensemble anomali tespiti kare-bazlı
     Özgür İP10: patrol/alert MQTT yayını
+    FP DÜZELTME: fg_ratio=0 iken (warmup sürüyor) veya robot hareket halinde
+    uyarı basılmaz.
     """
     r = durum.isle(frame, robot_durum)
+
+    # FP Düzeltme: MOG2 warmup (ilk 40 kare) süresince fg_ratio=0 → alert iptal
+    if r["is_alert"] and r.get("fg_ratio", 0.0) == 0.0 and kare_no < 45:
+        r = dict(r)  # frozendict değil; güncellenebilir kopyası
+        r["is_alert"] = False
+        r["severity"] = "NONE"
+        r["karar_aciklama"] = f"Warmup ({kare_no}/40) — atlandı"
 
     # Özgür İP10: patrol/alert yayını — her alert veya 30 karede bir
     if r["is_alert"] or kare_no % 30 == 0:
