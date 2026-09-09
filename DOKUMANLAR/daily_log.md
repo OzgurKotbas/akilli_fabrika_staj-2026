@@ -502,3 +502,20 @@ Sistemi sabit deÄŸerli (hardcoded) zamanlamadan kurtarÄ±p, zaman damgalarÄ±nÄ± d
 | **WP01 Ã‡Ã¶p KovasÄ± Tespit (IoU)** | 0.094 (FP) | 0.35 (TP) | HizalamalÄ± sÃ¼rÃ¼m hedefi doÄŸru lokalize etti |
 | **WP02 ve WP03 GT Bbox** | Dairesel (MOG2) | Dairesel (UyarÄ±ldÄ±) | Elle etiketleme gerekiyor |
 | **Optik AkÄ±ÅŸ MedyanÄ±** | 0.38 | - | EÅŸik 3.5'ten 0.50'ye dÃ¼ÅŸÃ¼rÃ¼ldÃ¼ |
+
+
+## Eylül 2026 - Demo V2 ve Mimari Entegrasyonu
+
+- [x] **Ortak Demo (run_demo.py) V2 Sürümü Geliþtirildi:**
+  - Bedirhan (Algýlama), Reþit (Gösterge) ve Özgür (Anomali) modülleri tek bir un_demo.py dosyasýnda birleþtirildi.
+  - Tüm modüller için MQTT yayýnlama yeteneði eklendi. (patrol/alert, ision/target_offset, inspect/reading)
+  - Broker bulunamadýðýnda hata vermek yerine JSONL dosyalarýna loglama yapacak Offline mod eklendi.
+- [x] **Hareketli Kamerada 3D Parallax Problemi Çözüldü (Optik Akýþ):**
+  - Demo testlerinde robotun koridorda yürümesi sýrasýnda oluþan derinlik kaymalarýnýn (3D Parallax) MOG2'yi tetikleyerek 150+ sahte anomali (False Positive) ürettiði tespit edildi.
+  - Donanýmsal tekerlek sensörü olmadýðý için, **Optik Akýþ (Lucas-Kanade Optical Flow)** kullanýlarak Ego-Motion hesaplayan bir simülasyon yazýldý.
+  - Piksellerin kayma miktarý 1.5px'i aþtýðýnda robotun hareket ettiði anlaþýlarak Anomali taramasý (MOG2) uyku moduna alýndý. FP oraný %0'a indirildi.
+- [x] **Kategori Tabanlý Anomali Skorlamasý (ÝP13):**
+  - Tespit edilen anomaliler boyut (W/H oraný) ve renk (HSV) deðerlerine göre YAPI_ANOMALISI (dikey, ince), ZEMIN_SIZINTISI (karanlýk, yayvan) ve YABANCI_NESNE olarak etiketlendi.
+- [x] **Github Reposu Temizliði:**
+  - un_demo.py scripti ana dizine alýndý, baþkasýna ait test ve baðýmlýlýk klasörleri (asrav_gauge_repo, vb.) Github'dan kaldýrýlarak .gitignore'a eklendi.
+

@@ -1,84 +1,82 @@
-# Görsel Anomali Tespiti ve Otomatik Devriye Raporu Sistemi
+<div align="center">
+  <img src="https://img.shields.io/badge/Proje_Durumu-Tamamlandı-success?style=for-the-badge" alt="Durum">
+  <img src="https://img.shields.io/badge/Kütüphane-anomalib_|_OpenCV-blue?style=for-the-badge" alt="Kütüphane">
+  <img src="https://img.shields.io/badge/Mimari-İki_Fazlı_Hibrit-purple?style=for-the-badge" alt="Mimari">
+</div>
 
-![Proje Durumu](https://img.shields.io/badge/Proje_Durumu-Geliştirme_Aşamasında-orange)
-![Kütüphane](https://img.shields.io/badge/Kütüphane-anomalib-blue)
-![Model](https://img.shields.io/badge/Model-PatchCore%20%7C%20PaDiM-green)
+# 🏭 Akıllı Fabrika Staj 2026: Otonom Devriye Robotu – Görsel Anomali Tespiti
 
-Bu depo (repository), akıllı fabrika konseptinde çalışan otonom bir devriye sisteminin **Görsel Anomali Tespiti** modülünün geliştirilmesi amacıyla oluşturulmuştur. Özgür Kotbaş'ın 2026 yılı staj projesinin bir parçasıdır.
-
-## 📋 İçindekiler
-- [Projenin Amacı ve Kapsamı](#-projenin-amacı-ve-kapsamı)
-- [Bu Depoda (Repo) Neler Yapılıyor?](#-bu-depoda-repo-neler-yapılıyor)
-- [Klasör Yapısı ve İçerik](#-klasör-yapısı-ve-içerik)
-- [Kurulum ve Başlangıç](#-kurulum-ve-başlangıç)
-- [Proje Ekibi](#-proje-ekibi)
+Bu depo (repository), akıllı fabrika konseptinde çalışan otonom bir devriye robotunun **Görsel Anomali Tespiti ve Raporlama** modülünü içermektedir. Bursa Teknik Üniversitesi (BTÜ) 2026 Yaz Stajı kapsamında **Özgür Kotbaş** tarafından geliştirilmiştir.
 
 ---
 
 ## 🎯 Projenin Amacı ve Kapsamı
 
-Fabrikalarda veya endüstriyel tesislerde gerçekleştirilen devriye turları sırasında; çevresel sorunların, üretim hattındaki aksaklıkların veya güvenlik ihlallerinin hızlıca tespit edilmesi hayati önem taşır.
+Otonom devriye gezen pan-tilt kameralı bir robotun (robot köpek), fabrikadaki olağan dışı durumları (anomalileri) insan müdahalesi olmadan tespit etmesi ve vardiya sonunda otomatik kanıtlı PDF raporları oluşturması amaçlanmıştır.
 
-Bu projenin temel amacı: **Sistemdeki kameranın elde ettiği görüntüleri "normal (altın tur)" referanslarla karşılaştırarak, devriye sırasında oluşmuş olağandışı durumları (anomalileri) yapay zeka ile otomatik olarak tespit etmektir.**
-
-Örnek Anomali Senaryoları:
-* Yerde bırakılmış yabancı nesneler (kutu, çanta vb.)
-* Acil çıkış kapılarının önünün kapanması
-* Fabrika zeminindeki su veya yağ sızıntıları
-
-Sistem, anomali tespit ettiği noktaları piksel bazlı ısı haritaları (heatmaps) ile işaretleyerek tur sonunda insan müdahalesine gerek kalmadan kanıtlı bir **Markdown/PDF Devriye Raporu** oluşturmayı hedefler.
+**Hedeflenen Anomali Senaryoları:**
+* Yerde unutulan alet çantaları veya yabancı nesneler (`YABANCI_NESNE`)
+* Fabrika zeminindeki tehlikeli su, yağ ve kimyasal sızıntıları (`ZEMIN_SIZINTISI`)
+* Acil çıkış kapılarının önünün kapanması, yapısal bükülmeler (`YAPI_ANOMALISI`)
 
 ---
 
-## 🔍 Bu Depoda (Repo) Neler Yapılıyor?
+## 🧠 Gelişmiş Anomali Takibi: İki Fazlı (Hibrit) Mimari
 
-Bu depo, yukarıda bahsedilen büyük projenin **"Anomali Tespiti ve Raporlama"** ayağını (Özgür Kotbaş'ın sorumluluğu) içerir. Bu repodaki kodlar ve modeller şu görevleri üstlenir:
+Otonom robotların kameraları hareket halindeyken derinlik (3D Parallax) kaymaları yaşar. Geleneksel arka plan çıkarma algoritmaları bu kaymaları anomali sanarak binlerce yanlış alarm (False Positive) üretir. 
 
-1. **Altın Tur (Referans) Veri Seti Oluşturma:** Kameranın normal zamanlardaki turundan "waypoint" adı verilen referans karelerin çıkarılması ve indekslenmesi.
-2. **Model Eğitimi:** `anomalib` kütüphanesinin sağladığı son teknoloji (SOTA) makine öğrenmesi modelleriyle (Özellikle **PatchCore** ve **PaDiM**) sistemin sadece "normali" görerek eğitilmesi.
-3. **Anomali Çıkarımı (Inference):** Yeni bir test görüntüsü geldiğinde, referans kare ile hizalama yapıp üzerindeki anomaliyi tespit etme ve ısı haritası oluşturma.
-4. **Loglama ve Raporlama:** Tüm sürecin dokümante edilmesi.
+Bu sorunu kökünden çözmek için **İki Fazlı (Hibrit) Mimari** tasarlanmış ve donanım verisi olmamasına rağmen **Optik Akış (Optical Flow)** ile Ego-Motion simülasyonu koda entegre edilmiştir.
 
----
+### 🚶‍♂️ Faz 1: Transit Yürüyüş (Uyku Modu)
+Robot bir kontrol noktasına (waypoint) yürürken:
+* **Optik Akış (Lucas-Kanade):** Piksellerin kayma miktarını ölçer. 1.5px üzerindeki kaymalar robotun hareket ettiğini kanıtlar.
+* **MOG2 Uykuya Alınır:** 3D Parallax hatalarını önlemek için arka plan çıkarma algoritması devre dışı bırakılır.
+* Sadece **YOLO** nesne tespiti çalışarak önceden tanımlanmış tehlikeleri (İnsan, Baret, Forklift) arar.
 
-## 📂 Klasör Yapısı ve İçerik
-
-Proje modüler ve sürdürülebilir olması adına aşağıdaki yapıya göre organize edilmiştir:
-
-* **`docs/`** 📚: Proje tanımı, literatür özetleri, anomali senaryoları listesi ve eski raporların bulunduğu dokümantasyon dizini.
-* **`data/`** 🗃️: Model eğitiminde ve testinde kullanılan ham videolar (`raw_videos/`) ile çıkartılan referans karelerin (`waypoints/`) tutulduğu veri seti dizini.
-* **`scripts/`** 💻: 
-  * `anomali_test.py`: Anomalib kullanılarak yazılmış model inferans/test kodları.
-  * `referans_kareler_cikart.py`: Videodan waypoint resimleri kesme kodları.
-  * `AI.md`: Geliştirme süreci boyunca yapay zeka ile yapılan teknik müzakereler.
-* **`outputs/`** 📈: Eğitilen modellerin ürettiği ısı haritaları (heatmaps) ve performans değerlendirme raporları (F1, AUROC gibi metrikler).
-* **`DOKUMANLAR/`**: Eski iş paketleri listesi ve ilk proje tanımlarının arşivlendiği klasör.
-* **`daily_log.md`**: Proje boyunca gerçekleştirilen işlerin gün gün kaydedildiği ilerleme takip dosyası.
+### 🛑 Faz 2: Waypoint İncelemesi (Derin Tarama)
+Robot kontrol noktasına (ör: bir vananın önüne) ulaştığında:
+* Kamera sadece kendi ekseni etrafında (Pan-Tilt) döner (Parallax oluşmaz).
+* **Uyanış:** Optik akış durmayı algılar ve **MOG2** ile **PatchCore (anomalib)** algoritmaları uyanır.
+* **ORB + RANSAC Hizalama:** Görüntü titreşimlerine karşı kareler milimetrik olarak hizalanır.
+* Kategori tabanlı filtreleme ile anomaliler renk (HSV) ve boyutlarına göre ayrıştırılır.
 
 ---
 
-## 🚀 Kurulum ve Başlangıç
+## 🛠️ Modüller ve Teknolojiler
 
-Projede anomali tespiti işlemleri için [Anomalib](https://github.com/open-edge-platform/anomalib) kütüphanesinden faydalanılmaktadır. MVTec-AD veri seti üzerinde temel baseline testini (PaDiM/PatchCore) başlatmak için:
+Proje salt bir derin öğrenme kodundan ibaret değildir; endüstriyel kalitede bir "Pipeline" (veri hattı) mimarisine sahiptir:
 
-1. Gerekli kütüphaneleri kurun:
-   ```bash
-   pip install anomalib
-   ```
-
-2. Test scriptini çalıştırın:
-   ```bash
-   python scripts/anomali_test.py
-   ```
-*(Not: İlk çalıştırmada model ağırlıkları ve MVTec-AD veri seti otomatik olarak indirilecektir.)*
-
-Daha detaylı senaryoları incelemek için `docs/proje_tanimi/senaryo_listesi.md` dosyasına göz atabilirsiniz.
+1. **Denetimsiz Yapay Zeka (anomalib):** `PatchCore` ve `PaDiM` modelleri kullanılarak sistemin sadece "normal" fotoğrafları (Altın Tur) görmesi sağlanmış, anomaliler bu normale olan sapmalardan hesaplanmıştır.
+2. **Kategori Tabanlı Filtreleme:** Sadece "anomali var" demez; sızıntıları yatay ve karanlık yapısından, yapısal sorunları ise dikey yapısından analiz ederek etiketler.
+3. **MQTT Entegrasyonu:** Tüm modüller `patrol/alert` başlığı altında JSON tabanlı haberleşir. Çevrimdışı durumlarda veriler `.jsonl` olarak diskte yedeklenir.
+4. **Otomatik Raporlama:** Devriye bittiğinde saniyeler içinde kanıt fotoğraflarıyla dolu, metriklerin bulunduğu Markdown/PDF raporu oluşturur.
 
 ---
 
-## 👥 Proje Ekibi
+## 📂 Klasör Yapısı
 
-Bu otonom sistem 3 kişilik bir stajyer ekibi tarafından eşzamanlı ve haberleşmeli olarak geliştirilmektedir:
-* **Bedirhan:** Vizyon, YOLO nesne tespiti, Navigasyon ve ROS2.
-* **Reşit:** Arayüz, Veri Tabanı (MongoDB) ve MQTT Göstergeleri.
-* **Özgür (Bu Repo):** Anomalib, PatchCore/PaDiM model eğitimleri ve Devriye Raporlama.
+* `scripts/run_demo.py`: Tüm ekibin kodlarını birleştiren, Optik Akış ve Anomali tespiti entegre edilmiş **Ana Demo Çalıştırıcı**.
+* `data/`: Model eğitiminde kullanılan referans kareler (Altın Tur - Waypoints).
+* `outputs/`: Algoritmaların ürettiği ısı haritaları (Heatmaps) ve otomatik raporlar.
+* `DOKUMANLAR/`: Proje mimarisi, literatür taraması, günlük loglar (`daily_log.md`) ve **Teknik Sunum Raporu**.
+
+*(Not: Diğer ekip üyelerine ait modeller ve ağır klasörler `.gitignore` ile yalıtılmış olup, deponun temiz kalması sağlanmıştır.)*
+
+---
+
+## 🚀 Demoyu Çalıştırma
+
+Ortak geliştirilen demoyu çalıştırmak için ana dizindeki betiği kullanabilirsiniz (Ekip arkadaşlarının kodlarının aynı dizinde bulunduğu varsayılır):
+
+```bash
+# Gerekli bağımlılıkları yükleyin
+pip install -r requirements.txt
+
+# Demoyu Başlatın
+python scripts/run_demo.py --video "koridor.mp4" --gosterge-agirlik "best.pt"
+```
+
+> **Not:** Demo sırasında sağ taraftaki panelde, robot yürürken MOG2'nin uyku moduna geçtiğini ve durduğunda ortamı taradığını canlı olarak izleyebilirsiniz!
+
+---
+*Bu proje, BTÜ Akıllı Fabrika 2026 Yaz Stajı 03_Gama Grubu tarafından geliştirilmiştir.*
