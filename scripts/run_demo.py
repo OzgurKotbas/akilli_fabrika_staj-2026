@@ -103,6 +103,176 @@ PID_KP, PID_KI, PID_KD = 0.08, 0.001, 0.02
 PID_MAX_CIKTI = 30.0   # derece/sn (simüle — servo limiti)
 
 # ═══════════════════════════════════════════════════════════════════════════
+# GÖMÜLÜ ANOMALİ MODÜLÜ — scripts.core.anomali_hizalamali bulunamazsa fallback
+# (Özgür İP9 — ORB + RANSAC hizalamalı fark, zamansal onay)
+# Dışarıdan import edilebilirse o kullanılır; bu kopya yalnızca fallback.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Sabitler (config.yaml bağımsız — her ortamda çalışır)
+_ORB_OZELLIK      = 2000
+_MIN_ESLESME      = 12
+_MIN_ICERIDE      = 10
+_MAD_K            = 6.0
+_MIN_MUTLAK_FARK  = 18
+_MORPH            = 7
+_MIN_ALAN         = 1500
+_MAX_ALAN_ORANI   = 0.40
+_TAVAN_ORANI      = 0.18
+_PARLAMA_V        = 235
+_PARLAMA_S        = 45
+_PARLAMA_GENISLET = 9
+_SARI_ALT         = np.array([18, 80, 80])
+_SARI_UST         = np.array([38, 255, 255])
+_SARI_GENISLET    = 15
+
+
+def _hz_gri(img):
+    return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+
+def _hz_parlama(bgr):
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+    m = ((hsv[..., 2] >= _PARLAMA_V) & (hsv[..., 1] <= _PARLAMA_S)).astype(np.uint8) * 255
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (_PARLAMA_GENISLET, _PARLAMA_GENISLET))
+    return cv2.dilate(m, k, 1)
+
+
+def _hz_sari(bgr):
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+    m = cv2.inRange(hsv, _SARI_ALT, _SARI_UST)
+    k = cv2.getStructuringElement(cv2.MORPH_RECT, (_SARI_GENISLET, _SARI_GENISLET))
+    return cv2.dilate(m, k, 1)
+
+
+def _hz_hizala(kaynak, hedef):
+    """ORB + RANSAC homografi ile kaynak'ı hedef perspektifine taşır."""
+    orb = cv2.ORB_create(_ORB_OZELLIK)
+    k1, d1 = orb.detectAndCompute(_hz_gri(kaynak), None)
+    k2, d2 = orb.detectAndCompute(_hz_gri(hedef), None)
+    if d1 is None or d2 is None or len(k1) < _MIN_ESLESME or len(k2) < _MIN_ESLESME:
+        return None, None, 0
+    bf   = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    esler = sorted(bf.match(d1, d2), key=lambda m: m.distance)[:400]
+    if len(esler) < _MIN_ESLESME:
+        return None, None, 0
+    src = np.float32([k1[m.queryIdx].pt for m in esler]).reshape(-1, 1, 2)
+    dst = np.float32([k2[m.trainIdx].pt for m in esler]).reshape(-1, 1, 2)
+    H, mask = cv2.findHomography(src, dst, cv2.RANSAC, 3.0)
+    if H is None:
+        return None, None, 0
+    iceride = int(mask.sum()) if mask is not None else 0
+    if iceride < _MIN_ICERIDE:
+        return None, None, iceride
+    h, w   = hedef.shape[:2]
+    warped = cv2.warpPerspective(kaynak, H, (w, h))
+    ones   = np.full(kaynak.shape[:2], 255, np.uint8)
+    gecerli = cv2.erode(cv2.warpPerspective(ones, H, (w, h)),
+                        np.ones((9, 9), np.uint8), 1)
+    return warped, gecerli, iceride
+
+
+def _hz_kutular(fark, gecerli, bastir, min_alan):
+    h, w = fark.shape
+    ic = gecerli > 0
+    if ic.sum() < 0.10 * fark.size:
+        return [], np.zeros_like(fark), 0.0
+    degerler = fark[ic]
+    medyan   = float(np.median(degerler))
+    mad      = float(np.median(np.abs(degerler - medyan))) or 1.0
+    esik     = max(medyan + _MAD_K * mad, _MIN_MUTLAK_FARK)
+    maske    = ((fark > esik) & ic).astype(np.uint8) * 255
+    maske[:int(h * _TAVAN_ORANI), :] = 0
+    maske[bastir > 0] = 0
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (_MORPH, _MORPH))
+    maske = cv2.morphologyEx(maske, cv2.MORPH_OPEN,  np.ones((3, 3), np.uint8))
+    maske = cv2.morphologyEx(maske, cv2.MORPH_CLOSE, k)
+    konturlar, _ = cv2.findContours(maske, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    nesneler = []
+    for c in konturlar:
+        if cv2.contourArea(c) < min_alan:
+            continue
+        x, y, bw, bh = cv2.boundingRect(c)
+        if bw * bh > h * w * _MAX_ALAN_ORANI:
+            continue
+        nesneler.append({"x": int(x), "y": int(y), "w": int(bw), "h": int(bh),
+                         "area": int(bw * bh), "cx": int(x + bw // 2), "cy": int(y + bh // 2)})
+    nesneler.sort(key=lambda o: -o["area"])
+    return nesneler, maske, esik
+
+
+class _AkisAlgilayici_Gomulu:
+    """Gömülü AkisAlgilayici — scripts.core.anomali_hizalamali bulunamazsa kullanılır.
+    Arayüz tamamen aynı: isle(kare) → dict(ok, nesneler, aday, esik, iceride)"""
+
+    def __init__(self, onay_kare=3, pencere=5, min_alan=_MIN_ALAN, eslesme_mesafesi=60):
+        self.onay_kare         = onay_kare
+        self.pencere           = pencere
+        self.min_alan          = min_alan
+        self.eslesme_mesafesi  = eslesme_mesafesi
+        self._onceki           = None
+        self._izler            = []
+        self._sayac            = 0
+
+    def isle(self, kare: np.ndarray) -> dict:
+        self._sayac += 1
+        if self._onceki is None:
+            self._onceki = kare.copy()
+            return {"ok": False, "sebep": "ilk kare", "nesneler": [], "aday": []}
+
+        warped, gecerli, iceride = _hz_hizala(self._onceki, kare)
+        self._onceki = kare.copy()
+        if warped is None:
+            return {"ok": False, "sebep": "hizalama basarisiz", "nesneler": [], "aday": []}
+
+        bastir = cv2.bitwise_or(_hz_parlama(kare), _hz_sari(kare))
+        ga  = cv2.GaussianBlur(_hz_gri(kare),   (5, 5), 0)
+        gb  = cv2.GaussianBlur(_hz_gri(warped),  (5, 5), 0)
+        fark = cv2.absdiff(ga, gb)
+        adaylar, _, esik = _hz_kutular(fark, gecerli, bastir, self.min_alan)
+
+        for iz in self._izler:
+            iz["gorulen"] = False
+        for a in adaylar:
+            en_iyi = None
+            for iz in self._izler:
+                d = abs(iz["cx"] - a["cx"]) + abs(iz["cy"] - a["cy"])
+                if d < self.eslesme_mesafesi and (en_iyi is None or d < en_iyi[0]):
+                    en_iyi = (d, iz)
+            if en_iyi:
+                iz = en_iyi[1]
+                iz.update(cx=a["cx"], cy=a["cy"], vurus=iz["vurus"] + 1,
+                          gorulen=True, kutu=a, son=self._sayac)
+            else:
+                self._izler.append({"cx": a["cx"], "cy": a["cy"], "vurus": 1,
+                                    "gorulen": True, "kutu": a, "son": self._sayac})
+        self._izler = [iz for iz in self._izler if self._sayac - iz["son"] < self.pencere]
+
+        onayli = [iz["kutu"] for iz in self._izler
+                  if iz["vurus"] >= self.onay_kare and iz["gorulen"]]
+        onayli.sort(key=lambda o: -o["area"])
+
+        # Öncelik 4: kategori sınıflandırması (aynı mantık)
+        for o in onayli:
+            roi = kare[max(0, o["y"]):o["y"]+o["h"], max(0, o["x"]):o["x"]+o["w"]]
+            if roi.size > 0:
+                hsv    = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+                v_mean = hsv[..., 2].mean()
+                s_mean = hsv[..., 1].mean()
+                w, h   = o["w"], o["h"]
+                if v_mean < 80 and s_mean < 60 and w > h * 1.5:
+                    o["kategori"] = "zemin_sizintisi"
+                elif h > w * 1.5:
+                    o["kategori"] = "yapi_anomalisi"
+                else:
+                    o["kategori"] = "yabanci_sabit_nesne"
+            else:
+                o["kategori"] = "yabanci_sabit_nesne"
+
+        return {"ok": True, "nesneler": onayli, "aday": adaylar,
+                "esik": round(esik, 1), "iceride": iceride}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # YARDIMCI FONKSİYONLAR
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -472,14 +642,15 @@ class _AnomalDurumu:
             try:
                 self._algilayici = hz.AkisAlgilayici()
                 self._hazir = True
+                print("  [ANOMALİ] Ozgur modulu yuklendi (harici).")
             except Exception as _e:
-                print(f"  [ANOMALİ] AkisAlgilayici başlatılamadı: {_e}")
-                self._algilayici = None
-                self._hazir = False
+                print(f"  [ANOMALİ] AkisAlgilayici başlatılamadı: {_e} → gömülü fallback'e geçildi")
+                self._algilayici = _AkisAlgilayici_Gomulu()
+                self._hazir = True
         else:
-            print("  [ANOMALİ] anomali_hizalamali bulunamadı — panel devre dışı")
-            self._algilayici = None
-            self._hazir = False
+            print("  [ANOMALİ] Harici modul bulunamadi — gomulu ORB+RANSAC motoru devrede.")
+            self._algilayici = _AkisAlgilayici_Gomulu()
+            self._hazir = True
 
         self.score_hist   = deque(maxlen=60)
         self.toplam_uyari = 0
