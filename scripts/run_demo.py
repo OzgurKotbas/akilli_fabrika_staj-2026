@@ -421,12 +421,63 @@ class _AnomalDurumu:
     """
 
     def __init__(self):
-        try:
-            from scripts.core import anomali_hizalamali as hz
-            self._algilayici = hz.AkisAlgilayici()
-            self._hazir = True
-        except ImportError as e:
-            print(f"  [ANOMALİ] Özgür modülü yüklenemedi: {e}")
+        hz = None
+        _arama_siralari = [
+            # 1) Standart paket yolu — proje kökü sys.path'teyse çalışır
+            ("scripts.core", "anomali_hizalamali"),
+            # 2) scripts/ doğrudan path'teyse (Sirac'ın REPO_DIR/scripts eklentisi)
+            ("core", "anomali_hizalamali"),
+        ]
+        for pkg, mod in _arama_siralari:
+            try:
+                import importlib
+                hz = importlib.import_module(f"{pkg}.{mod}")
+                break
+            except ImportError:
+                continue
+
+        # 3) Paket import başarısız → dosya yolu ile direkt yükle
+        if hz is None:
+            import importlib.util as _ilu
+            _bulucu = None
+            _aradir = [
+                Path(__file__).resolve().parent / "core",           # scripts/core/
+                Path(__file__).resolve().parent.parent / "scripts" / "core",  # demo/../scripts/core/
+            ]
+            for _d in _aradir:
+                _f = _d / "anomali_hizalamali.py"
+                if _f.exists():
+                    _bulucu = _f
+                    break
+            if _bulucu:
+                try:
+                    _spec = _ilu.spec_from_file_location("anomali_hizalamali", _bulucu)
+                    hz = _ilu.module_from_spec(_spec)
+                    # config_okuyucu bağımlılığını sys.modules'e enjekte et
+                    import sys as _sys
+                    if "scripts.core.config_okuyucu" not in _sys.modules:
+                        _ck = _bulucu.parent / "config_okuyucu.py"
+                        if _ck.exists():
+                            _ck_spec = _ilu.spec_from_file_location("config_okuyucu", _ck)
+                            _ck_mod  = _ilu.module_from_spec(_ck_spec)
+                            _ck_spec.loader.exec_module(_ck_mod)
+                            _sys.modules["config_okuyucu"] = _ck_mod
+                            _sys.modules["scripts.core.config_okuyucu"] = _ck_mod
+                    _spec.loader.exec_module(hz)
+                except Exception as _e:
+                    print(f"  [ANOMALİ] Dinamik yükleme başarısız: {_e}")
+                    hz = None
+
+        if hz is not None:
+            try:
+                self._algilayici = hz.AkisAlgilayici()
+                self._hazir = True
+            except Exception as _e:
+                print(f"  [ANOMALİ] AkisAlgilayici başlatılamadı: {_e}")
+                self._algilayici = None
+                self._hazir = False
+        else:
+            print("  [ANOMALİ] anomali_hizalamali bulunamadı — panel devre dışı")
             self._algilayici = None
             self._hazir = False
 
